@@ -7,7 +7,7 @@ import {
   RotateCcw, Trash2, ShoppingCart, Zap, Landmark, RotateCw, Palette,
   Swords, Crown, Star, Flame, Sun, Atom, Heart, Shield, CircuitBoard,
   MousePointerClick, TrendingUp, Timer, Percent, Gift, ArrowUpCircle,
-  Trophy, RefreshCw, UserRound,
+  Trophy, RefreshCw, UserRound, Lock,
 } from '@lucide/vue'
 
 // ============ Tab 系统 ============
@@ -17,11 +17,18 @@ const activeTab = ref<TabId>('click')
 // ============ 等级排行榜 ============
 const LEVEL_LEADERBOARD_KEY = 'cube_clicker_level'
 const LEVEL_LEADERBOARD_LIMIT = 100
+const VISITOR_LEADERBOARD_KEY = 'cube_clicker_visitors'
+const VISITOR_LEADERBOARD_PAGE_SIZE = 100
+const VISITOR_STATS_UNLOCK_TAPS = 10
 const BASE_LEVEL_UP_COST = 10000
 const LEVEL_UP_COST_GROWTH = 1.5
 const LOCAL_LEADERBOARD_PREVIEW = import.meta.env.DEV
 const GAME_BACKGROUND_URL = new URL(
   `${import.meta.env.BASE_URL}assets/ui/game-background-v2.png`,
+  document.baseURI,
+).href
+const GAME_ICON_URL = new URL(
+  `${import.meta.env.BASE_URL}assets/branding/game-icon.png`,
   document.baseURI,
 ).href
 
@@ -34,7 +41,15 @@ const leaderboardLoading = ref(false)
 const leaderboardEntries = ref<LeaderboardEntry[]>([])
 const leaderboardMessage = ref('')
 const leaderboardHasError = ref(false)
+const visitorStatsUnlocked = ref(false)
+const visitorStatsLoading = ref(false)
+const visitorStatsToday = ref(0)
+const visitorStatsTotal = ref(0)
+const visitorStatsMessage = ref('')
+const safeAreaTop = ref(0)
 let stopAuthListener: (() => void) | undefined
+let visitorAvatarTapCount = 0
+let visitorTrackedDate = 0
 
 const nextLevelCost = computed(() => {
   const cost = BASE_LEVEL_UP_COST * Math.pow(LEVEL_UP_COST_GROWTH, playerLevel.value - 1)
@@ -57,18 +72,24 @@ interface Building {
 }
 
 const buildings = ref<Building[]>([
-  { id: 'robot',    name: '小机器人',     icon: Bot,       baseCps: 1,        baseCost: 50,            count: 0, unlockAt: 0 },
-  { id: 'factory',  name: '迷你工厂',     icon: Factory,   baseCps: 5,        baseCost: 300,           count: 0, unlockAt: 300 },
-  { id: 'super',    name: '超级工厂',     icon: Rocket,    baseCps: 20,       baseCost: 1500,          count: 0, unlockAt: 1500 },
-  { id: 'quantum',  name: '量子农场',     icon: Orbit,     baseCps: 100,      baseCost: 10000,         count: 0, unlockAt: 8000 },
-  { id: 'star',     name: '星际矿场',     icon: Globe,     baseCps: 500,      baseCost: 60000,         count: 0, unlockAt: 40000 },
-  { id: 'reaper',   name: '维度收割者',   icon: Atom,      baseCps: 2000,     baseCost: 350000,        count: 0, unlockAt: 200000 },
-  { id: 'sun',      name: '太阳熔炉',     icon: Sun,       baseCps: 10000,    baseCost: 2000000,       count: 0, unlockAt: 1000000 },
-  { id: 'rift',     name: '时空裂缝',     icon: Flame,     baseCps: 50000,    baseCost: 12000000,      count: 0, unlockAt: 6000000 },
-  { id: 'galaxy',   name: '银河引擎',     icon: Star,      baseCps: 250000,   baseCost: 80000000,      count: 0, unlockAt: 30000000 },
-  { id: 'void',     name: '虚空提取器',   icon: Crown,     baseCps: 1200000,  baseCost: 500000000,     count: 0, unlockAt: 150000000 },
-  { id: 'genesis',  name: '创世引擎',     icon: Diamond,   baseCps: 6000000,  baseCost: 3500000000,    count: 0, unlockAt: 800000000 },
-  { id: 'omega',    name: '终极奇点',     icon: Sparkles,  baseCps: 30000000, baseCost: 25000000000,   count: 0, unlockAt: 4000000000 },
+  { id: 'robot',    name: '小机器人',     icon: Bot,       baseCps: 1,     baseCost: 50,   count: 0, unlockAt: 0 },
+  { id: 'factory',  name: '迷你工厂',     icon: Factory,   baseCps: 1e2,   baseCost: 5e3,  count: 0, unlockAt: 5e3 },
+  { id: 'super',    name: '超级工厂',     icon: Rocket,    baseCps: 1e4,   baseCost: 5e5,  count: 0, unlockAt: 5e5 },
+  { id: 'quantum',  name: '量子农场',     icon: Orbit,     baseCps: 1e6,   baseCost: 5e7,  count: 0, unlockAt: 5e7 },
+  { id: 'star',     name: '星际矿场',     icon: Globe,     baseCps: 1e8,   baseCost: 5e9,  count: 0, unlockAt: 5e9 },
+  { id: 'reaper',   name: '维度收割者',   icon: Atom,      baseCps: 1e10,  baseCost: 5e11, count: 0, unlockAt: 5e11 },
+  { id: 'sun',      name: '太阳熔炉',     icon: Sun,       baseCps: 1e12,  baseCost: 5e13, count: 0, unlockAt: 5e13 },
+  { id: 'rift',     name: '时空裂缝',     icon: Flame,     baseCps: 1e14,  baseCost: 5e15, count: 0, unlockAt: 5e15 },
+  { id: 'galaxy',   name: '银河引擎',     icon: Star,      baseCps: 1e16,  baseCost: 5e17, count: 0, unlockAt: 5e17 },
+  { id: 'void',     name: '虚空提取器',   icon: Crown,     baseCps: 1e18,  baseCost: 5e19, count: 0, unlockAt: 5e19 },
+  { id: 'genesis',  name: '创世引擎',     icon: Diamond,   baseCps: 1e20,  baseCost: 5e21, count: 0, unlockAt: 5e21 },
+  { id: 'omega',    name: '终极奇点',     icon: Sparkles,  baseCps: 1e22,  baseCost: 5e23, count: 0, unlockAt: 5e23 },
+  { id: 'multiverse', name: '多元宇宙核心', icon: Orbit,        baseCps: 1e24, baseCost: 5e25, count: 0, unlockAt: 5e25 },
+  { id: 'causality',  name: '因果编织机',   icon: CircuitBoard, baseCps: 1e26, baseCost: 5e27, count: 0, unlockAt: 5e27 },
+  { id: 'hypercraft', name: '超维母舰',     icon: Rocket,       baseCps: 1e28, baseCost: 5e29, count: 0, unlockAt: 5e29 },
+  { id: 'lawforge',   name: '法则熔炉',     icon: Sun,          baseCps: 1e30, baseCost: 5e31, count: 0, unlockAt: 5e31 },
+  { id: 'rebooter',   name: '宇宙重启器',   icon: RotateCw,     baseCps: 1e32, baseCost: 5e33, count: 0, unlockAt: 5e33 },
+  { id: 'terminus',   name: '终焉观测站',   icon: Globe,        baseCps: 1e34, baseCost: 5e35, count: 0, unlockAt: 5e35 },
 ])
 
 // ============ 机器人协同升级 ============
@@ -85,17 +106,23 @@ interface SynergyUpgrade {
 }
 
 const synergyUpgrades = ref<SynergyUpgrade[]>([
-  { id: 'syn1', name: '齿轮之心',   icon: Heart,    desc: '机器人产出翻倍。每拥有1个机器人，迷你工厂 +1% 产出', cost: 2000,       bought: false, targetBuildingId: 'factory', requiredRobots: 1, unlockAt: 1000 },
-  { id: 'syn2', name: '钢铁之魂',   icon: Shield,   desc: '机器人产出翻倍。每拥有2个机器人，超级工厂 +1% 产出', cost: 10000,      bought: false, targetBuildingId: 'super',   requiredRobots: 2, unlockAt: 6000 },
-  { id: 'syn3', name: '量子共振',   icon: Atom,     desc: '机器人产出翻倍。每拥有3个机器人，量子农场 +1% 产出', cost: 50000,      bought: false, targetBuildingId: 'quantum', requiredRobots: 3, unlockAt: 30000 },
-  { id: 'syn4', name: '星际链接',   icon: Globe,    desc: '机器人产出翻倍。每拥有4个机器人，星际矿场 +1% 产出', cost: 250000,     bought: false, targetBuildingId: 'star',    requiredRobots: 4, unlockAt: 120000 },
-  { id: 'syn5', name: '维度通道',   icon: Orbit,    desc: '机器人产出翻倍。每拥有5个机器人，维度收割者 +1% 产出', cost: 1200000,    bought: false, targetBuildingId: 'reaper',  requiredRobots: 5, unlockAt: 500000 },
-  { id: 'syn6', name: '日冕协议',   icon: Sun,      desc: '机器人产出翻倍。每拥有6个机器人，太阳熔炉 +1% 产出', cost: 6000000,    bought: false, targetBuildingId: 'sun',     requiredRobots: 6, unlockAt: 2500000 },
-  { id: 'syn7', name: '时空编织',   icon: Sparkles, desc: '机器人产出翻倍。每拥有7个机器人，时空裂缝 +1% 产出', cost: 30000000,   bought: false, targetBuildingId: 'rift',    requiredRobots: 7, unlockAt: 12000000 },
-  { id: 'syn8', name: '银河之链',   icon: Star,     desc: '机器人产出翻倍。每拥有8个机器人，银河引擎 +1% 产出', cost: 150000000,  bought: false, targetBuildingId: 'galaxy',  requiredRobots: 8, unlockAt: 50000000 },
-  { id: 'syn9', name: '虚空共鸣',   icon: Crown,    desc: '机器人产出翻倍。每拥有9个机器人，虚空提取器 +1% 产出', cost: 800000000,  bought: false, targetBuildingId: 'void',    requiredRobots: 9, unlockAt: 200000000 },
-  { id: 'syn10', name: '创世回响',  icon: Diamond,  desc: '机器人产出翻倍。每拥有10个机器人，创世引擎 +1% 产出', cost: 4000000000, bought: false, targetBuildingId: 'genesis', requiredRobots: 10, unlockAt: 1000000000 },
-  { id: 'syn11', name: '奇点共振',  icon: Flame,    desc: '机器人产出翻倍。每拥有11个机器人，终极奇点 +1% 产出', cost: 20000000000,bought: false, targetBuildingId: 'omega',   requiredRobots: 11, unlockAt: 5000000000 },
+  { id: 'syn1',  name: '齿轮之心',  icon: Heart,    desc: '机器人产出翻倍。每拥有1个机器人，迷你工厂 +1% 产出',  cost: 2e3,  bought: false, targetBuildingId: 'factory', requiredRobots: 1,  unlockAt: 1e3 },
+  { id: 'syn2',  name: '钢铁之魂',  icon: Shield,   desc: '机器人产出翻倍。每拥有2个机器人，超级工厂 +1% 产出',  cost: 2e5,  bought: false, targetBuildingId: 'super',   requiredRobots: 2,  unlockAt: 1e5 },
+  { id: 'syn3',  name: '量子共振',  icon: Atom,     desc: '机器人产出翻倍。每拥有3个机器人，量子农场 +1% 产出',  cost: 2e7,  bought: false, targetBuildingId: 'quantum', requiredRobots: 3,  unlockAt: 1e7 },
+  { id: 'syn4',  name: '星际链接',  icon: Globe,    desc: '机器人产出翻倍。每拥有4个机器人，星际矿场 +1% 产出',  cost: 2e9,  bought: false, targetBuildingId: 'star',    requiredRobots: 4,  unlockAt: 1e9 },
+  { id: 'syn5',  name: '维度通道',  icon: Orbit,    desc: '机器人产出翻倍。每拥有5个机器人，维度收割者 +1% 产出', cost: 2e11, bought: false, targetBuildingId: 'reaper',  requiredRobots: 5,  unlockAt: 1e11 },
+  { id: 'syn6',  name: '日冕协议',  icon: Sun,      desc: '机器人产出翻倍。每拥有6个机器人，太阳熔炉 +1% 产出',   cost: 2e13, bought: false, targetBuildingId: 'sun',     requiredRobots: 6,  unlockAt: 1e13 },
+  { id: 'syn7',  name: '时空编织',  icon: Sparkles, desc: '机器人产出翻倍。每拥有7个机器人，时空裂缝 +1% 产出',   cost: 2e15, bought: false, targetBuildingId: 'rift',    requiredRobots: 7,  unlockAt: 1e15 },
+  { id: 'syn8',  name: '银河之链',  icon: Star,     desc: '机器人产出翻倍。每拥有8个机器人，银河引擎 +1% 产出',   cost: 2e17, bought: false, targetBuildingId: 'galaxy',  requiredRobots: 8,  unlockAt: 1e17 },
+  { id: 'syn9',  name: '虚空共鸣',  icon: Crown,    desc: '机器人产出翻倍。每拥有9个机器人，虚空提取器 +1% 产出', cost: 2e19, bought: false, targetBuildingId: 'void',    requiredRobots: 9,  unlockAt: 1e19 },
+  { id: 'syn10', name: '创世回响',  icon: Diamond,  desc: '机器人产出翻倍。每拥有10个机器人，创世引擎 +1% 产出', cost: 2e21, bought: false, targetBuildingId: 'genesis', requiredRobots: 10, unlockAt: 1e21 },
+  { id: 'syn11', name: '奇点共振',  icon: Flame,    desc: '机器人产出翻倍。每拥有11个机器人，终极奇点 +1% 产出', cost: 2e23, bought: false, targetBuildingId: 'omega',   requiredRobots: 11, unlockAt: 1e23 },
+  { id: 'syn12', name: '多元谐振',  icon: Orbit,    desc: '机器人产出翻倍。每拥有12个机器人，多元宇宙核心 +1% 产出', cost: 2e25, bought: false, targetBuildingId: 'multiverse', requiredRobots: 12, unlockAt: 1e25 },
+  { id: 'syn13', name: '因果回路',  icon: CircuitBoard, desc: '机器人产出翻倍。每拥有13个机器人，因果编织机 +1% 产出', cost: 2e27, bought: false, targetBuildingId: 'causality', requiredRobots: 13, unlockAt: 1e27 },
+  { id: 'syn14', name: '超维网络',  icon: Rocket,   desc: '机器人产出翻倍。每拥有14个机器人，超维母舰 +1% 产出', cost: 2e29, bought: false, targetBuildingId: 'hypercraft', requiredRobots: 14, unlockAt: 1e29 },
+  { id: 'syn15', name: '法则链接',  icon: Sun,      desc: '机器人产出翻倍。每拥有15个机器人，法则熔炉 +1% 产出', cost: 2e31, bought: false, targetBuildingId: 'lawforge', requiredRobots: 15, unlockAt: 1e31 },
+  { id: 'syn16', name: '重启协议',  icon: RotateCw, desc: '机器人产出翻倍。每拥有16个机器人，宇宙重启器 +1% 产出', cost: 2e33, bought: false, targetBuildingId: 'rebooter', requiredRobots: 16, unlockAt: 1e33 },
+  { id: 'syn17', name: '终焉观测',  icon: Globe,    desc: '机器人产出翻倍。每拥有17个机器人，终焉观测站 +1% 产出', cost: 2e35, bought: false, targetBuildingId: 'terminus', requiredRobots: 17, unlockAt: 1e35 },
 ])
 
 const robotDoubles = ref(0)
@@ -139,15 +166,28 @@ function buyBuilding(building: Building) {
   const count = getBuildingBuyCount(building)
   if (count <= 0) return
   const total = getBuildingCost(building, count)
-  if (cubeCount.value >= total) { cubeCount.value -= total; building.count += count }
+  if (cubeCount.value >= total) {
+    cubeCount.value -= total
+    building.count += count
+    triggerPurchaseFeedback(`building:${building.id}`)
+  }
 }
 
 function buySynergyUpgrade(syn: SynergyUpgrade) {
   if (syn.bought || cubeCount.value < syn.cost) return
-  cubeCount.value -= syn.cost; syn.bought = true; robotDoubles.value++
+  cubeCount.value -= syn.cost
+  syn.bought = true
+  robotDoubles.value++
+  triggerPurchaseFeedback(`synergy:${syn.id}`)
 }
 
 const visibleBuildings = computed(() => buildings.value.filter(b => totalCubesEver.value >= b.unlockAt))
+const nextLockedBuilding = computed(() => buildings.value.find(b => totalCubesEver.value < b.unlockAt) ?? null)
+const nextBuildingUnlockProgress = computed(() => {
+  const target = nextLockedBuilding.value?.unlockAt ?? 0
+  if (target <= 0) return 100
+  return Math.min(100, Math.max(0, totalCubesEver.value / target * 100))
+})
 const visibleSynergyUpgrades = computed(() => synergyUpgrades.value.filter(s => !s.bought && totalCubesEver.value >= s.unlockAt))
 
 // ============ 核心数据 ============
@@ -159,6 +199,28 @@ const rebirthCount = ref(0)
 const heritagePoints = ref(0)
 const heritageMultiplier = ref(1)
 const rebirthAutoClick = ref(0)
+const purchaseFeedbackKey = ref('')
+const balanceBumped = ref(false)
+let purchaseCardTimer: number | undefined
+let balanceBumpTimer: number | undefined
+
+function triggerPurchaseFeedback(key: string) {
+  if (purchaseCardTimer !== undefined) window.clearTimeout(purchaseCardTimer)
+  if (balanceBumpTimer !== undefined) window.clearTimeout(balanceBumpTimer)
+
+  purchaseFeedbackKey.value = ''
+  balanceBumped.value = false
+  window.requestAnimationFrame(() => {
+    purchaseFeedbackKey.value = key
+    balanceBumped.value = true
+    purchaseCardTimer = window.setTimeout(() => { purchaseFeedbackKey.value = '' }, 520)
+    balanceBumpTimer = window.setTimeout(() => { balanceBumped.value = false }, 420)
+  })
+
+  void hbSDK.device.vibrate({ intensity: 'light', delay: 0 }).catch(() => {
+    // 浏览器调试或旧版宿主不支持震动时，保留其余购买反馈。
+  })
+}
 
 const effectiveClickPower = computed(() => Math.floor(clickPower.value * heritageMultiplier.value * rebirthClickMultiplier.value))
 const effectiveAutoRate = computed(() => totalCps.value)
@@ -178,28 +240,43 @@ interface ClickUpgrade {
 
 const clickUpgrades = ref<ClickUpgrade[]>([
   { id: 'click1', name: '更硬的锤子', icon: Hammer, desc: '每次点击 +1', baseCost: 15, cost: 15, level: 0, effect: (n) => { clickPower.value += n } },
-  { id: 'click5', name: '钻石锤子', icon: Diamond, desc: '每次点击 +5', baseCost: 800, cost: 800, level: 0, unlockAt: 500, effect: (n) => { clickPower.value += 5 * n } },
-  { id: 'click20', name: '雷神之锤', icon: Swords, desc: '每次点击 +20', baseCost: 5000, cost: 5000, level: 0, unlockAt: 3000, effect: (n) => { clickPower.value += 20 * n } },
-  { id: 'click100', name: '王者权杖', icon: Crown, desc: '每次点击 +100', baseCost: 35000, cost: 35000, level: 0, unlockAt: 20000, effect: (n) => { clickPower.value += 100 * n } },
-  { id: 'click500', name: '星辰之触', icon: Star, desc: '每次点击 +500', baseCost: 250000, cost: 250000, level: 0, unlockAt: 150000, effect: (n) => { clickPower.value += 500 * n } },
-  { id: 'click2000', name: '次元之手', icon: Atom, desc: '每次点击 +2000', baseCost: 2000000, cost: 2000000, level: 0, unlockAt: 1000000, effect: (n) => { clickPower.value += 2000 * n } },
-  { id: 'click10000', name: '宇宙权柄', icon: Globe, desc: '每次点击 +10000', baseCost: 15000000, cost: 15000000, level: 0, unlockAt: 8000000, effect: (n) => { clickPower.value += 10000 * n } },
-  { id: 'click50000', name: '创世之锤', icon: Sun, desc: '每次点击 +50000', baseCost: 120000000, cost: 120000000, level: 0, unlockAt: 60000000, effect: (n) => { clickPower.value += 50000 * n } },
-  { id: 'click200000', name: '奇点之力', icon: Flame, desc: '每次点击 +200000', baseCost: 1000000000, cost: 1000000000, level: 0, unlockAt: 500000000, effect: (n) => { clickPower.value += 200000 * n } },
+  { id: 'click5', name: '钻石锤子', icon: Diamond, desc: '每次点击 +100', baseCost: 1.5e3, cost: 1.5e3, level: 0, unlockAt: 5e2, effect: (n) => { clickPower.value += 1e2 * n } },
+  { id: 'click20', name: '雷神之锤', icon: Swords, desc: '每次点击 +1万', baseCost: 1.5e5, cost: 1.5e5, level: 0, unlockAt: 5e4, effect: (n) => { clickPower.value += 1e4 * n } },
+  { id: 'click100', name: '王者权杖', icon: Crown, desc: '每次点击 +100万', baseCost: 1.5e7, cost: 1.5e7, level: 0, unlockAt: 5e6, effect: (n) => { clickPower.value += 1e6 * n } },
+  { id: 'click500', name: '星辰之触', icon: Star, desc: '每次点击 +1亿', baseCost: 1.5e9, cost: 1.5e9, level: 0, unlockAt: 5e8, effect: (n) => { clickPower.value += 1e8 * n } },
+  { id: 'click2000', name: '次元之手', icon: Atom, desc: '每次点击 +100亿', baseCost: 1.5e11, cost: 1.5e11, level: 0, unlockAt: 5e10, effect: (n) => { clickPower.value += 1e10 * n } },
+  { id: 'click10000', name: '宇宙权柄', icon: Globe, desc: '每次点击 +1万亿', baseCost: 1.5e13, cost: 1.5e13, level: 0, unlockAt: 5e12, effect: (n) => { clickPower.value += 1e12 * n } },
+  { id: 'click50000', name: '创世之锤', icon: Sun, desc: '每次点击 +100万亿', baseCost: 1.5e15, cost: 1.5e15, level: 0, unlockAt: 5e14, effect: (n) => { clickPower.value += 1e14 * n } },
+  { id: 'click200000', name: '奇点之力', icon: Flame, desc: '每次点击 +1京', baseCost: 1.5e17, cost: 1.5e17, level: 0, unlockAt: 5e16, effect: (n) => { clickPower.value += 1e16 * n } },
+  { id: 'clickVoid', name: '虚空之握', icon: Crown, desc: '每次点击 +100京', baseCost: 1.5e19, cost: 1.5e19, level: 0, unlockAt: 5e18, effect: (n) => { clickPower.value += 1e18 * n } },
+  { id: 'clickGenesis', name: '创世之手', icon: Diamond, desc: '每次点击 +1垓', baseCost: 1.5e21, cost: 1.5e21, level: 0, unlockAt: 5e20, effect: (n) => { clickPower.value += 1e20 * n } },
+  { id: 'clickOmega', name: '终极权能', icon: Sparkles, desc: '每次点击 +100垓', baseCost: 1.5e23, cost: 1.5e23, level: 0, unlockAt: 5e22, effect: (n) => { clickPower.value += 1e22 * n } },
+  { id: 'clickMultiverse', name: '多元之触', icon: Orbit, desc: '每次点击 +1秭', baseCost: 1.5e25, cost: 1.5e25, level: 0, unlockAt: 5e24, effect: (n) => { clickPower.value += 1e24 * n } },
+  { id: 'clickCausality', name: '因果裁决', icon: CircuitBoard, desc: '每次点击 +100秭', baseCost: 1.5e27, cost: 1.5e27, level: 0, unlockAt: 5e26, effect: (n) => { clickPower.value += 1e26 * n } },
+  { id: 'clickHypercraft', name: '超维敕令', icon: Rocket, desc: '每次点击 +1穰', baseCost: 1.5e29, cost: 1.5e29, level: 0, unlockAt: 5e28, effect: (n) => { clickPower.value += 1e28 * n } },
+  { id: 'clickLawforge', name: '法则改写', icon: Sun, desc: '每次点击 +100穰', baseCost: 1.5e31, cost: 1.5e31, level: 0, unlockAt: 5e30, effect: (n) => { clickPower.value += 1e30 * n } },
+  { id: 'clickRebooter', name: '宇宙重构', icon: RotateCw, desc: '每次点击 +1沟', baseCost: 1.5e33, cost: 1.5e33, level: 0, unlockAt: 5e32, effect: (n) => { clickPower.value += 1e32 * n } },
+  { id: 'clickTerminus', name: '终焉一指', icon: Globe, desc: '每次点击 +100沟', baseCost: 1.5e35, cost: 1.5e35, level: 0, unlockAt: 5e34, effect: (n) => { clickPower.value += 1e34 * n } },
 ])
 
 // 自动点击升级：根据每秒产量动态解锁和定价
 const autoClickTiers = [
-  { cpsRequired: 1000,     cost: 100000 },      // 1k/秒 → 10万
-  { cpsRequired: 10000,    cost: 1000000 },      // 1万/秒 → 100万
-  { cpsRequired: 100000,   cost: 10000000 },     // 10万/秒 → 1000万
-  { cpsRequired: 1000000,  cost: 100000000 },    // 100万/秒 → 1亿
-  { cpsRequired: 10000000, cost: 1000000000 },   // 1000万/秒 → 10亿
-  { cpsRequired: 1e8,      cost: 10000000000 },  // 1亿/秒 → 100亿
-  { cpsRequired: 1e9,      cost: 100000000000 }, // 10亿/秒 → 1000亿
-  { cpsRequired: 1e10,     cost: 1e12 },         // 100亿/秒 → 1万亿
-  { cpsRequired: 1e11,     cost: 1e13 },         // 1000亿/秒 → 10万亿
-  { cpsRequired: 1e12,     cost: 1e14 },         // 1万亿/秒 → 100万亿
+  { cpsRequired: 1e3,  cost: 1e5 },
+  { cpsRequired: 1e5,  cost: 1e7 },
+  { cpsRequired: 1e7,  cost: 1e9 },
+  { cpsRequired: 1e9,  cost: 1e11 },
+  { cpsRequired: 1e11, cost: 1e13 },
+  { cpsRequired: 1e13, cost: 1e15 },
+  { cpsRequired: 1e15, cost: 1e17 },
+  { cpsRequired: 1e17, cost: 1e19 },
+  { cpsRequired: 1e19, cost: 1e21 },
+  { cpsRequired: 1e21, cost: 1e23 },
+  { cpsRequired: 1e23, cost: 1e25 },
+  { cpsRequired: 1e25, cost: 1e27 },
+  { cpsRequired: 1e27, cost: 1e29 },
+  { cpsRequired: 1e29, cost: 1e31 },
+  { cpsRequired: 1e31, cost: 1e33 },
+  { cpsRequired: 1e33, cost: 1e35 },
 ]
 
 const availableAutoClickUpgrade = computed(() => {
@@ -215,6 +292,7 @@ function buyAutoClickUpgrade() {
   if (!upgrade || cubeCount.value < upgrade.cost) return
   cubeCount.value -= upgrade.cost
   rebirthAutoClick.value++
+  triggerPurchaseFeedback('auto-click')
 }
 
 const visibleClickUpgrades = computed(() => clickUpgrades.value.filter(u => !u.unlockAt || totalCubesEver.value >= u.unlockAt))
@@ -224,7 +302,8 @@ function getUpgradeBuyCount(u: ClickUpgrade): number {
     const affordable = getMaxAffordableCount(cubeCount.value, count => getUpgradeCost(u, count))
     return u.maxLevel ? Math.min(affordable, Math.max(0, u.maxLevel - u.level)) : affordable
   }
-  return buyMode.value as number
+  const requested = buyMode.value as number
+  return u.maxLevel ? Math.min(requested, Math.max(0, u.maxLevel - u.level)) : requested
 }
 
 function getUpgradeCost(u: ClickUpgrade, count: number): number {
@@ -270,6 +349,28 @@ function getMaxAffordableCount(funds: number, getCost: (count: number) => number
   return getCost(high) <= funds ? high : low
 }
 
+function getBuildingPurchaseCost(building: Building): number {
+  return getBuildingCost(building, Math.max(1, getBuildingBuyCount(building)))
+}
+
+function canBuyBuilding(building: Building): boolean {
+  const count = getBuildingBuyCount(building)
+  return count > 0 && cubeCount.value >= getBuildingCost(building, count)
+}
+
+function isUpgradeMaxed(upgrade: ClickUpgrade): boolean {
+  return upgrade.maxLevel !== undefined && upgrade.level >= upgrade.maxLevel
+}
+
+function getUpgradePurchaseCost(upgrade: ClickUpgrade): number {
+  return getUpgradeCost(upgrade, Math.max(1, getUpgradeBuyCount(upgrade)))
+}
+
+function canBuyUpgrade(upgrade: ClickUpgrade): boolean {
+  const count = getUpgradeBuyCount(upgrade)
+  return count > 0 && cubeCount.value >= getUpgradeCost(upgrade, count)
+}
+
 function buyClickUpgrade(u: ClickUpgrade) {
   const count = getUpgradeBuyCount(u)
   if (count <= 0) return
@@ -279,6 +380,7 @@ function buyClickUpgrade(u: ClickUpgrade) {
   if (cubeCount.value >= total) {
     cubeCount.value -= total; u.level += actualCount; u.effect(actualCount)
     u.cost = Math.floor(u.baseCost * Math.pow(1.18, u.level))
+    triggerPurchaseFeedback(`click:${u.id}`)
   }
 }
 
@@ -376,15 +478,42 @@ const goldenMultiplier = computed(() => 10 + rebirthGoldenMultiplierBonus.value)
 
 // ============ 离线弹窗 ============
 const offlineModal = ref({ show: false, time: '', gain: '', rate: 50 })
+const rebirthConfirm = ref(false)
 const resetConfirm = ref(false)
 
 // ============ 黄金时段 ============
 const goldenActive = ref(false)
 const goldenRemaining = ref(0)
 const goldenEndTime = ref(0)
+const fallingGoldenCubeVisible = ref(false)
+const fallingGoldenCubeX = ref(50)
 let goldenTimer: number | undefined
+let fallingGoldenCubeTimer: number | undefined
+const GOLDEN_CUBE_FALL_DURATION = 4800
 
 function spawnGolden() {
+  if (goldenActive.value || fallingGoldenCubeVisible.value) return
+  fallingGoldenCubeX.value = 12 + Math.random() * 76
+  fallingGoldenCubeVisible.value = true
+  if (fallingGoldenCubeTimer !== undefined) window.clearTimeout(fallingGoldenCubeTimer)
+  fallingGoldenCubeTimer = window.setTimeout(dismissFallingGoldenCube, GOLDEN_CUBE_FALL_DURATION)
+}
+
+function dismissFallingGoldenCube() {
+  fallingGoldenCubeVisible.value = false
+  if (fallingGoldenCubeTimer !== undefined) {
+    window.clearTimeout(fallingGoldenCubeTimer)
+    fallingGoldenCubeTimer = undefined
+  }
+}
+
+function collectFallingGoldenCube() {
+  if (!fallingGoldenCubeVisible.value || goldenActive.value) return
+  dismissFallingGoldenCube()
+  startGoldenPeriod()
+}
+
+function startGoldenPeriod() {
   if (goldenActive.value) return
   goldenActive.value = true
   goldenEndTime.value = Date.now() + goldenDuration.value * 1000
@@ -409,6 +538,7 @@ function stopGoldenTimer() {
     window.clearTimeout(goldenTimer)
     goldenTimer = undefined
   }
+  dismissFallingGoldenCube()
 }
 
 const goldenParticles = ref<{ id: number; text: string }[]>([])
@@ -443,7 +573,14 @@ const heritageReward = computed(() => {
 
 function rebirth() {
   if (heritageReward.value <= 0) return
-  if (!confirm(`转生将重置所有进度，获得 ${heritageReward.value} 遗产点数。\n当前遗产: ${heritagePoints.value}（x${heritageMultiplier.value.toFixed(1)}）\n\n确定转生？`)) return
+  rebirthConfirm.value = true
+}
+
+function confirmRebirth() {
+  if (heritageReward.value <= 0) {
+    rebirthConfirm.value = false
+    return
+  }
   heritagePoints.value += heritageReward.value
   heritageMultiplier.value = 1 + heritagePoints.value * 0.1
   rebirthCount.value++
@@ -453,6 +590,7 @@ function rebirth() {
   clickUpgrades.value.forEach(u => { u.level = 0; u.cost = u.baseCost })
   rebirthAutoClick.value = 0
   synergyUpgrades.value.forEach(s => { s.bought = false })
+  rebirthConfirm.value = false
   saveGame()
 }
 
@@ -476,9 +614,9 @@ function selectSkin(id: string) { selectedSkinId.value = id; skinPickerOpen.valu
 
 // 预生成随机位置表，避免每次渲染都变
 const farmPositions = Array.from({ length: 100 }, () => ({
-  x: Math.random() * 92 + 2,
-  y: Math.random() * 88 + 4,
-  size: 20 + Math.random() * 20,
+  x: Math.random() * 86 + 3,
+  y: Math.random() * 82 + 4,
+  size: 30 + Math.random() * 28,
   rotate: Math.random() * 360,
   delay: Math.random() * 3,
   emojiIndex: Math.floor(Math.random() * cubeEmojis.length),
@@ -501,6 +639,107 @@ function openLeaderboardPage() {
   void loadLeaderboard()
 }
 
+function getVisitorDayScore(timestamp = Date.now()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(timestamp))
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]))
+  return Number(`${values.year}${values.month}${values.day}`)
+}
+
+const visitorStatsDateLabel = computed(() => new Intl.DateTimeFormat('zh-CN', {
+  timeZone: 'Asia/Shanghai',
+  month: 'long',
+  day: 'numeric',
+}).format(new Date()))
+
+async function trackDailyVisitor(throwOnError = false) {
+  if (!sdkConnected.value || !currentUser.value || LOCAL_LEADERBOARD_PREVIEW) return
+  const today = getVisitorDayScore()
+  if (visitorTrackedDate === today) return
+
+  try {
+    const currentEntry = await hbSDK.cloud.leaderboard.getCurrentUserEntry({
+      key: VISITOR_LEADERBOARD_KEY,
+    })
+    if (!currentEntry || currentEntry.score < today) {
+      await hbSDK.cloud.leaderboard.submit({
+        key: VISITOR_LEADERBOARD_KEY,
+        score: today,
+        extra: {
+          visitedDate: today,
+        },
+      })
+    }
+    visitorTrackedDate = today
+  } catch (error) {
+    if (throwOnError) throw error
+    // 隐藏统计榜不可用时不影响正常游戏和公开等级榜。
+  }
+}
+
+function handleVisitorSecretTap() {
+  if (visitorStatsUnlocked.value) return
+  visitorAvatarTapCount += 1
+  if (visitorAvatarTapCount < VISITOR_STATS_UNLOCK_TAPS) return
+
+  visitorStatsUnlocked.value = true
+  void hbSDK.device.vibrate({ intensity: 'light' }).catch(() => {})
+  void loadVisitorStats()
+}
+
+async function loadVisitorStats() {
+  if (visitorStatsLoading.value) return
+  if (LOCAL_LEADERBOARD_PREVIEW) {
+    visitorStatsToday.value = 29
+    visitorStatsTotal.value = 286
+    visitorStatsMessage.value = ''
+    return
+  }
+  if (!sdkConnected.value || !currentUser.value) {
+    visitorStatsMessage.value = '登录小黑盒后可查看访问统计。'
+    return
+  }
+
+  visitorStatsLoading.value = true
+  visitorStatsMessage.value = ''
+  try {
+    await trackDailyVisitor(true)
+    const today = getVisitorDayScore()
+    let todayCount = 0
+    let totalCount = 0
+    let cursor: string | undefined
+    const seenCursors = new Set<string>()
+
+    do {
+      const result = await hbSDK.cloud.leaderboard.getList({
+        key: VISITOR_LEADERBOARD_KEY,
+        limit: VISITOR_LEADERBOARD_PAGE_SIZE,
+        ...(cursor ? { cursor } : {}),
+      })
+      totalCount += result.entries.length
+      todayCount += result.entries.filter(entry => Math.floor(entry.score) === today).length
+
+      if (!result.hasMore) break
+      if (!result.cursor || seenCursors.has(result.cursor)) {
+        throw new Error('访问榜分页游标异常')
+      }
+      seenCursors.add(result.cursor)
+      cursor = result.cursor
+    } while (cursor)
+
+    visitorStatsToday.value = todayCount
+    visitorStatsTotal.value = totalCount
+  } catch {
+    visitorStatsMessage.value = '访问统计暂不可用，请稍后刷新。'
+  } finally {
+    visitorStatsLoading.value = false
+  }
+}
+
 async function connectLeaderboard() {
   if (LOCAL_LEADERBOARD_PREVIEW) {
     sdkConnected.value = true
@@ -518,7 +757,10 @@ async function connectLeaderboard() {
     sdkConnected.value = true
     const userResult = await hbSDK.user.getInfo()
     currentUser.value = userResult.isLogin ? userResult.userInfo : null
-    if (currentUser.value) await syncPlayerLevel()
+    if (currentUser.value) {
+      await syncPlayerLevel()
+      await trackDailyVisitor()
+    }
     await loadLeaderboard()
   } catch {
     sdkConnected.value = false
@@ -543,6 +785,7 @@ async function loginToLeaderboard() {
     }
     sdkConnected.value = true
     await syncPlayerLevel()
+    await trackDailyVisitor()
     await loadLeaderboard()
   } catch {
     leaderboardHasError.value = true
@@ -709,15 +952,34 @@ function hideBrokenAvatar(event: Event) {
   if (event.currentTarget instanceof HTMLImageElement) event.currentTarget.style.display = 'none'
 }
 
+let gameRuntimeStarted = false
+
 // ============ 存档 ============
-let tickTimer: number
+let tickTimer: number | undefined
 let lastAutosaveAt = 0
 
-function saveWhenHidden() {
-  if (document.visibilityState === 'hidden') saveGame()
+function handleVisibilityChange() {
+  if (document.visibilityState === 'hidden') {
+    if (gameRuntimeStarted) saveGame()
+  } else if (gameRuntimeStarted) {
+    void trackDailyVisitor()
+  }
 }
 
-onMounted(() => {
+async function syncSafeArea() {
+  try {
+    await hbSDK.ready()
+    const windowInfo = await hbSDK.viewport.getWindowInfo()
+    safeAreaTop.value = Math.max(0, windowInfo.safeArea.top, windowInfo.statusBarHeight)
+  } catch {
+    // 浏览器预览或旧版宿主不支持窗口信息时，交给 CSS 安全区和最小间距兜底。
+    safeAreaTop.value = 0
+  }
+}
+
+function startGameRuntime() {
+  if (gameRuntimeStarted) return
+  gameRuntimeStarted = true
   try {
     const saved = localStorage.getItem('cube-farm-save')
     if (saved) {
@@ -791,24 +1053,34 @@ onMounted(() => {
     }
   }, 1000)
 
-  document.addEventListener('visibilitychange', saveWhenHidden)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
   stopAuthListener = hbSDK.on('authChange', (result) => {
     currentUser.value = result.isLogin ? result.userInfo : null
     if (currentUser.value) {
-      void syncPlayerLevel().then(() => loadLeaderboard())
+      void syncPlayerLevel()
+        .then(() => trackDailyVisitor())
+        .then(() => loadLeaderboard())
     } else {
       void loadLeaderboard()
     }
   })
   void connectLeaderboard()
+}
+
+onMounted(() => {
+  void syncSafeArea()
+  startGameRuntime()
 })
 
 onUnmounted(() => {
-  clearInterval(tickTimer)
+  if (tickTimer !== undefined) window.clearInterval(tickTimer)
   stopGoldenTimer()
+  if (purchaseCardTimer !== undefined) window.clearTimeout(purchaseCardTimer)
+  if (balanceBumpTimer !== undefined) window.clearTimeout(balanceBumpTimer)
   stopAuthListener?.()
-  document.removeEventListener('visibilitychange', saveWhenHidden)
-  saveGame()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  if (gameRuntimeStarted) saveGame()
+  gameRuntimeStarted = false
 })
 
 function saveGame() {
@@ -848,6 +1120,11 @@ function formatTime(seconds: number) {
 
 function formatNumber(n: number) {
   if (!Number.isFinite(n) || n < 0) return '0'
+  if (n >= 1e44) return (n / 1e44).toFixed(2) + '载'
+  if (n >= 1e40) return (n / 1e40).toFixed(2) + '正'
+  if (n >= 1e36) return (n / 1e36).toFixed(2) + '涧'
+  if (n >= 1e32) return (n / 1e32).toFixed(2) + '沟'
+  if (n >= 1e28) return (n / 1e28).toFixed(2) + '穰'
   if (n >= 1e24) return (n / 1e24).toFixed(2) + '秭'
   if (n >= 1e20) return (n / 1e20).toFixed(2) + '垓'
   if (n >= 1e16) return (n / 1e16).toFixed(2) + '京'
@@ -859,10 +1136,16 @@ function formatNumber(n: number) {
 </script>
 
 <template>
-  <div class="game" :style="{ '--game-background': `url(${GAME_BACKGROUND_URL})` }">
+  <div
+    class="game"
+    :style="{
+      '--game-background': `url(${GAME_BACKGROUND_URL})`,
+      '--safe-area-top': `${safeAreaTop}px`,
+    }"
+  >
     <header class="game-header">
       <h1>
-        <Diamond :size="24" class="title-icon" />
+        <img :src="GAME_ICON_URL" alt="" class="title-icon" />
         cube 点点乐
         <span v-if="rebirthCount > 0" class="rebirth-badge">转生 ×{{ rebirthCount }}</span>
       </h1>
@@ -874,9 +1157,27 @@ function formatNumber(n: number) {
       </div>
     </header>
 
-    <Transition name="golden-fade">
-      <div v-if="goldenActive" class="golden-banner">
-        <Sparkles :size="16" /> 黄金时段 {{ goldenMultiplier }}x · {{ goldenRemaining }}秒 <Sparkles :size="16" />
+    <button
+      v-if="fallingGoldenCubeVisible"
+      class="falling-golden-cube"
+      :style="{
+        '--golden-cube-x': `${fallingGoldenCubeX}%`,
+        '--golden-cube-fall-duration': `${GOLDEN_CUBE_FALL_DURATION}ms`,
+      }"
+      aria-label="黄金 cube，点击开启黄金时段"
+      @click.stop="collectFallingGoldenCube"
+      @animationend.self="dismissFallingGoldenCube"
+    >
+      <span class="falling-golden-cube-halo"></span>
+      <img :src="clickEmoji.src" alt="" />
+      <span class="falling-golden-cube-label">点我！</span>
+    </button>
+
+    <Transition name="golden-banner-fade">
+      <div v-if="goldenActive" class="golden-banner-layer">
+        <div class="golden-banner">
+          <Sparkles :size="16" /> 黄金时段 {{ goldenMultiplier }}x · {{ goldenRemaining }}秒 <Sparkles :size="16" />
+        </div>
       </div>
     </Transition>
 
@@ -898,7 +1199,7 @@ function formatNumber(n: number) {
     </Transition>
 
     <!-- 点击页 -->
-    <div v-show="activeTab === 'click'" class="tab-content">
+    <div v-show="activeTab === 'click'" class="tab-content click-tab">
       <div class="farm-scene">
         <div class="farm-ground">
           <div v-for="i in farmCubes" :key="i" class="farm-cube" :style="getCubeStyle(i)">
@@ -939,45 +1240,79 @@ function formatNumber(n: number) {
           <h2><ShoppingCart :size="18" /> 商店</h2>
           <div class="buy-modes">
             <button v-for="m in buyModes" :key="m" class="mode-btn" :class="{ active: buyMode === m }" @click="setBuyMode(m)">×{{ m }}</button>
-            <button class="mode-btn" :class="{ active: buyMode === 'max' }" @click="setBuyMode('max')">Max</button>
+            <button class="mode-btn max-mode" :class="{ active: buyMode === 'max' }" @click="setBuyMode('max')">Max</button>
           </div>
         </div>
+        <div class="shop-balance">
+          <span>当前 cube</span>
+          <strong :class="{ bumped: balanceBumped }"><img :src="clickEmoji.src" alt="" /> {{ formatNumber(cubeCount) }}</strong>
+        </div>
         <div class="upgrade-list">
-          <button v-for="b in visibleBuildings" :key="b.id" class="upgrade-card" :class="{ affordable: cubeCount >= getBuildingCost(b) }" :disabled="cubeCount < getBuildingCost(b)" @click="buyBuilding(b)">
+          <button v-for="b in visibleBuildings" :key="b.id" class="upgrade-card" :class="{ affordable: canBuyBuilding(b), purchased: purchaseFeedbackKey === `building:${b.id}` }" :disabled="!canBuyBuilding(b)" @click="buyBuilding(b)">
             <div class="upgrade-info">
               <strong><component :is="b.icon" :size="16" class="upgrade-icon" /> {{ b.name }} <span class="building-count">×{{ b.count }}</span></strong>
-              <small>每个 {{ b.baseCps }}/秒</small>
+              <small>每个 {{ formatNumber(b.baseCps) }}/秒</small>
               <small v-if="b.id === 'robot' && robotDoubles > 0" class="synergy-hint">协同加成: x{{ Math.pow(2, robotDoubles) }}</small>
             </div>
             <div class="upgrade-cost">
-              <span><img :src="clickEmoji.src" alt="" class="cost-icon" /> {{ formatNumber(getBuildingCost(b, getBuildingBuyCount(b))) }}<template v-if="buyMode !== 1"> ×{{ getBuildingBuyCount(b) }}</template></span>
+              <span>
+                <img :src="clickEmoji.src" alt="" class="cost-icon" /> {{ formatNumber(getBuildingPurchaseCost(b)) }}
+                <template v-if="buyMode === 'max'"> Max ×{{ getBuildingBuyCount(b) }}</template>
+                <template v-else-if="buyMode !== 1"> ×{{ getBuildingBuyCount(b) }}</template>
+              </span>
               <small v-if="getBuildingDisplayCps(b) > 0" class="cps-hint">产出 {{ formatNumber(getBuildingDisplayCps(b)) }}/秒</small>
               <small v-else class="cps-hint-empty">产出 0/秒</small>
             </div>
           </button>
+          <article v-if="nextLockedBuilding" class="next-building-card">
+            <div class="next-building-main">
+              <div class="next-building-icon">
+                <component :is="nextLockedBuilding.icon" :size="20" />
+                <span><Lock :size="10" /></span>
+              </div>
+              <div class="next-building-copy">
+                <small>下一个建筑</small>
+                <strong>{{ nextLockedBuilding.name }}</strong>
+                <span>每个 {{ formatNumber(nextLockedBuilding.baseCps) }}/秒</span>
+              </div>
+            </div>
+            <div class="next-building-progress-copy">
+              <span>累计 cube 解锁进度</span>
+              <strong>{{ formatNumber(totalCubesEver) }} / {{ formatNumber(nextLockedBuilding.unlockAt) }}</strong>
+            </div>
+            <div class="next-building-progress" role="progressbar" :aria-valuenow="nextBuildingUnlockProgress" aria-valuemin="0" aria-valuemax="100">
+              <span :style="{ width: `${nextBuildingUnlockProgress}%` }"></span>
+            </div>
+          </article>
         </div>
         <div v-if="visibleSynergyUpgrades.length > 0" class="synergy-section">
           <h3><CircuitBoard :size="16" /> 机器人协同研究</h3>
           <div class="upgrade-list">
-            <button v-for="s in visibleSynergyUpgrades" :key="s.id" class="upgrade-card synergy-card" :class="{ affordable: cubeCount >= s.cost }" :disabled="cubeCount < s.cost" @click="buySynergyUpgrade(s)">
+            <button v-for="s in visibleSynergyUpgrades" :key="s.id" class="upgrade-card synergy-card" :class="{ affordable: cubeCount >= s.cost, purchased: purchaseFeedbackKey === `synergy:${s.id}` }" :disabled="cubeCount < s.cost" @click="buySynergyUpgrade(s)">
               <div class="upgrade-info">
                 <strong><component :is="s.icon" :size="16" class="upgrade-icon synergy-icon" /> {{ s.name }}</strong>
                 <small>{{ s.desc }}</small>
               </div>
-              <div class="upgrade-cost"><span><img :src="clickEmoji.src" alt="" class="cost-icon" /> {{ formatNumber(s.cost) }}</span></div>
+              <div class="upgrade-cost">
+                <span><img :src="clickEmoji.src" alt="" class="cost-icon" /> {{ formatNumber(s.cost) }}</span>
+              </div>
             </button>
           </div>
         </div>
         <div v-if="visibleClickUpgrades.length > 0" class="click-upgrades-section">
           <h3><Hammer :size="16" /> 点击强化</h3>
           <div class="upgrade-list">
-            <button v-for="u in visibleClickUpgrades" :key="u.id" class="upgrade-card" :class="{ affordable: cubeCount >= u.cost }" :disabled="cubeCount < u.cost" @click="buyClickUpgrade(u)">
+            <button v-for="u in visibleClickUpgrades" :key="u.id" class="upgrade-card" :class="{ affordable: canBuyUpgrade(u), purchased: purchaseFeedbackKey === `click:${u.id}` }" :disabled="!canBuyUpgrade(u)" @click="buyClickUpgrade(u)">
               <div class="upgrade-info">
                 <strong><component :is="u.icon" :size="16" class="upgrade-icon" /> {{ u.name }}</strong>
                 <small>{{ u.desc }}</small>
               </div>
               <div class="upgrade-cost">
-                <span><img :src="clickEmoji.src" alt="" class="cost-icon" /> {{ formatNumber(getUpgradeCost(u, getUpgradeBuyCount(u))) }}<template v-if="buyMode !== 1"> ×{{ getUpgradeBuyCount(u) }}</template></span>
+                <span>
+                  <img :src="clickEmoji.src" alt="" class="cost-icon" /> {{ formatNumber(getUpgradePurchaseCost(u)) }}
+                  <template v-if="buyMode === 'max'"> Max ×{{ getUpgradeBuyCount(u) }}</template>
+                  <template v-else-if="buyMode !== 1"> ×{{ getUpgradeBuyCount(u) }}</template>
+                </span>
                 <small v-if="u.maxLevel && u.level >= u.maxLevel" class="maxed-text">MAX</small>
                 <small v-else>Lv.{{ u.level }}</small>
               </div>
@@ -991,7 +1326,7 @@ function formatNumber(n: number) {
           <div class="upgrade-list">
             <button
               class="upgrade-card auto-click-card"
-              :class="{ affordable: cubeCount >= availableAutoClickUpgrade.cost }"
+              :class="{ affordable: cubeCount >= availableAutoClickUpgrade.cost, purchased: purchaseFeedbackKey === 'auto-click' }"
               :disabled="cubeCount < availableAutoClickUpgrade.cost"
               @click="buyAutoClickUpgrade()"
             >
@@ -1082,10 +1417,10 @@ function formatNumber(n: number) {
 
         <section class="player-level-card">
           <div class="player-profile">
-            <div class="player-avatar">
+            <button class="player-avatar visitor-secret-trigger" aria-label="我的头像" @click="handleVisitorSecretTap">
               <span>{{ currentUser?.nickname?.trim().charAt(0) || 'C' }}</span>
               <img v-if="currentUser?.avatar" :src="currentUser.avatar" alt="" referrerpolicy="no-referrer" @error="hideBrokenAvatar" />
-            </div>
+            </button>
             <div class="player-level-copy">
               <span>{{ currentUser?.nickname || '游客玩家' }}</span>
               <strong>Lv.{{ playerLevel }}</strong>
@@ -1099,6 +1434,32 @@ function formatNumber(n: number) {
               {{ levelUpLoading ? '同步中…' : '升级' }}
             </button>
           </div>
+        </section>
+
+        <section v-if="visitorStatsUnlocked" class="visitor-stats-card" aria-live="polite">
+          <div class="visitor-stats-header">
+            <div>
+              <span>HIDDEN ANALYTICS</span>
+              <strong><UserRound :size="16" /> 访问概览</strong>
+            </div>
+            <button :disabled="visitorStatsLoading" aria-label="刷新访问统计" @click="loadVisitorStats">
+              <RefreshCw :size="15" :class="{ spinning: visitorStatsLoading }" />
+            </button>
+          </div>
+          <div class="visitor-stats-grid">
+            <div>
+              <span>{{ visitorStatsDateLabel }}访客</span>
+              <strong>{{ visitorStatsLoading ? '—' : formatNumber(visitorStatsToday) }}</strong>
+              <small>人</small>
+            </div>
+            <div>
+              <span>累计访客</span>
+              <strong>{{ visitorStatsLoading ? '—' : formatNumber(visitorStatsTotal) }}</strong>
+              <small>人</small>
+            </div>
+          </div>
+          <p v-if="visitorStatsMessage" class="visitor-stats-message">{{ visitorStatsMessage }}</p>
+          <p v-else class="visitor-stats-note">按北京时间统计，每位登录用户每天只计 1 人</p>
         </section>
 
         <button v-if="!currentUser && !LOCAL_LEADERBOARD_PREVIEW" class="leaderboard-login" :disabled="authLoading" @click="loginToLeaderboard">
@@ -1156,6 +1517,22 @@ function formatNumber(n: number) {
         <Trophy :size="20" /><span>排行</span>
       </button>
     </nav>
+
+    <!-- 转生确认弹窗 -->
+    <Transition name="golden-fade">
+      <div v-if="rebirthConfirm" class="modal-overlay" @click.self="rebirthConfirm = false">
+        <div class="reset-modal">
+          <div class="reset-modal-icon">🔄</div>
+          <h3>确认转生</h3>
+          <p>转生将重置本轮进度，并获得 <strong>{{ heritageReward }}</strong> 点遗产。</p>
+          <p>当前遗产：{{ heritagePoints }} 点（x{{ heritageMultiplier.toFixed(1) }}）</p>
+          <div class="reset-modal-btns">
+            <button class="reset-cancel-btn" @click="rebirthConfirm = false">取消</button>
+            <button class="reset-confirm-btn" @click="confirmRebirth">确认转生</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
 
     <!-- 重置确认弹窗 -->
     <Transition name="golden-fade">
