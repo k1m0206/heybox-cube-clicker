@@ -1,0 +1,802 @@
+[
+  {
+    "id": "cube_181",
+    "code": "灵光一闪",
+    "src": "/assets/emojis/cube_181.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_181.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_104",
+    "code": "摘墨镜",
+    "src": "/assets/emojis/cube_104.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_104.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_14",
+    "code": "喜欢",
+    "src": "/assets/emojis/cube_14.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_14.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_11",
+    "code": "哭泣",
+    "src": "/assets/emojis/cube_11.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_11.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_34",
+    "code": "滑稽",
+    "src": "/assets/emojis/cube_34.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_34.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_24",
+    "code": "感动",
+    "src": "/assets/emojis/cube_24.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_24.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_22",
+    "code": "捂脸哭",
+    "src": "/assets/emojis/cube_22.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_22.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_13",
+    "code": "doge",
+    "src": "/assets/emojis/cube_13.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_13.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_16",
+    "code": "惊讶",
+    "src": "/assets/emojis/cube_16.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_16.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_101",
+    "code": "窝囊",
+    "src": "/assets/emojis/cube_101.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_101.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_31",
+    "code": "乖",
+    "src": "/assets/emojis/cube_31.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_31.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_32",
+    "code": "笑cry",
+    "src": "/assets/emojis/cube_32.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_32.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_21",
+    "code": "开心",
+    "src": "/assets/emojis/cube_21.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_21.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_62",
+    "code": "微笑",
+    "src": "/assets/emojis/cube_62.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_62.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_134",
+    "code": "欧润吉",
+    "src": "/assets/emojis/cube_134.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_134.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_102",
+    "code": "摸摸头",
+    "src": "/assets/emojis/cube_102.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_102.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_105",
+    "code": "悟空",
+    "src": "/assets/emojis/cube_105.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_105.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_103",
+    "code": "电牛",
+    "src": "/assets/emojis/cube_103.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_103.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_25",
+    "code": "委屈",
+    "src": "/assets/emojis/cube_25.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_25.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_95",
+    "code": "僵尸",
+    "src": "/assets/emojis/cube_95.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_95.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_51",
+    "code": "打脸",
+    "src": "/assets/emojis/cube_51.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_51.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_96",
+    "code": "小鸡",
+    "src": "/assets/emojis/cube_96.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_96.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_26",
+    "code": "并不简单",
+    "src": "/assets/emojis/cube_26.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_26.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_35",
+    "code": "沧桑",
+    "src": "/assets/emojis/cube_35.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_35.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_94",
+    "code": "超人",
+    "src": "/assets/emojis/cube_94.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_94.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_12",
+    "code": "酷",
+    "src": "/assets/emojis/cube_12.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_12.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_15-1",
+    "code": "黑人问号",
+    "src": "/assets/emojis/cube_15-1.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_15-1.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_41",
+    "code": "赞",
+    "src": "/assets/emojis/cube_41.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_41.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_46",
+    "code": "喷水",
+    "src": "/assets/emojis/cube_46.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_46.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_53",
+    "code": "生气",
+    "src": "/assets/emojis/cube_53.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_53.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_55",
+    "code": "闭嘴",
+    "src": "/assets/emojis/cube_55.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_55.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_23",
+    "code": "晕",
+    "src": "/assets/emojis/cube_23.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_23.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_82",
+    "code": "比心",
+    "src": "/assets/emojis/cube_82.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_82.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_85",
+    "code": "握草",
+    "src": "/assets/emojis/cube_85.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_85.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_33",
+    "code": "怒",
+    "src": "/assets/emojis/cube_33.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_33.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_44",
+    "code": "加油",
+    "src": "/assets/emojis/cube_44.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_44.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_91",
+    "code": "上学-乐",
+    "src": "/assets/emojis/cube_91.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_91.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_174",
+    "code": "炒菜",
+    "src": "/assets/emojis/cube_174.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_174.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_64",
+    "code": "汗",
+    "src": "/assets/emojis/cube_64.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_64.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_112",
+    "code": "嬉水女王",
+    "src": "/assets/emojis/cube_112.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_112.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_36",
+    "code": "凄凉",
+    "src": "/assets/emojis/cube_36.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_36.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_83",
+    "code": "wota",
+    "src": "/assets/emojis/cube_83.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_83.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_45",
+    "code": "摊手",
+    "src": "/assets/emojis/cube_45.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_45.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_63",
+    "code": "哇",
+    "src": "/assets/emojis/cube_63.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_63.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_56",
+    "code": "吐",
+    "src": "/assets/emojis/cube_56.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_56.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_54",
+    "code": "困",
+    "src": "/assets/emojis/cube_54.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_54.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_115",
+    "code": "吃鸡啦",
+    "src": "/assets/emojis/cube_115.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_115.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_84",
+    "code": "鹅",
+    "src": "/assets/emojis/cube_84.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_84.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_43",
+    "code": "叹气",
+    "src": "/assets/emojis/cube_43.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_43.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_146",
+    "code": "害羞",
+    "src": "/assets/emojis/cube_146.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_146.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_151",
+    "code": "吃瓜",
+    "src": "/assets/emojis/cube_151.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_151.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_154",
+    "code": "比耶",
+    "src": "/assets/emojis/cube_154.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_154.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_111",
+    "code": "良民",
+    "src": "/assets/emojis/cube_111.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_111.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_116",
+    "code": "鸡毙你",
+    "src": "/assets/emojis/cube_116.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_116.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_65",
+    "code": "吓",
+    "src": "/assets/emojis/cube_65.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_65.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_152",
+    "code": "菜doge",
+    "src": "/assets/emojis/cube_152.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_152.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_114",
+    "code": "浪人砍一刀",
+    "src": "/assets/emojis/cube_114.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_114.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_42",
+    "code": "学习",
+    "src": "/assets/emojis/cube_42.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_42.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_74",
+    "code": "庆祝-圣诞",
+    "src": "/assets/emojis/cube_74.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_74.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_86",
+    "code": "这是什么鸟",
+    "src": "/assets/emojis/cube_86.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_86.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_73",
+    "code": "庆祝",
+    "src": "/assets/emojis/cube_73.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_73.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_92",
+    "code": "上学-丧",
+    "src": "/assets/emojis/cube_92.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_92.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_153",
+    "code": "柠檬",
+    "src": "/assets/emojis/cube_153.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_153.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_172",
+    "code": "马年吉祥",
+    "src": "/assets/emojis/cube_172.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_172.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_176",
+    "code": "洛的点赞",
+    "src": "/assets/emojis/cube_176.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_176.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_61",
+    "code": "咕咕",
+    "src": "/assets/emojis/cube_61.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_61.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_136",
+    "code": "猛男微笑",
+    "src": "/assets/emojis/cube_136.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_136.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_142",
+    "code": "来财",
+    "src": "/assets/emojis/cube_142.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_142.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_144",
+    "code": "喜+1",
+    "src": "/assets/emojis/cube_144.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_144.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_163",
+    "code": "点赞",
+    "src": "/assets/emojis/cube_163.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_163.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_133",
+    "code": "剑星伊芙",
+    "src": "/assets/emojis/cube_133.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_133.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_125",
+    "code": "太酷啦",
+    "src": "/assets/emojis/cube_125.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_125.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_75",
+    "code": "你懂我",
+    "src": "/assets/emojis/cube_75.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_75.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_156",
+    "code": "玫瑰",
+    "src": "/assets/emojis/cube_156.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_156.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_76",
+    "code": "我懂你",
+    "src": "/assets/emojis/cube_76.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_76.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_66",
+    "code": "睡觉",
+    "src": "/assets/emojis/cube_66.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_66.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_155",
+    "code": "爱心",
+    "src": "/assets/emojis/cube_155.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_155.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_143",
+    "code": "我方了",
+    "src": "/assets/emojis/cube_143.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_143.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_131",
+    "code": "毁灭战士",
+    "src": "/assets/emojis/cube_131.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_131.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_135",
+    "code": "剑星渡鸦",
+    "src": "/assets/emojis/cube_135.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_135.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_141",
+    "code": "时间旅者",
+    "src": "/assets/emojis/cube_141.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_141.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_132",
+    "code": "P的谎言",
+    "src": "/assets/emojis/cube_132.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_132.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_164",
+    "code": "盒十",
+    "src": "/assets/emojis/cube_164.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_164.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_175",
+    "code": "山姆无奈",
+    "src": "/assets/emojis/cube_175.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_175.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_113",
+    "code": "2025",
+    "src": "/assets/emojis/cube_113.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_113.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_93",
+    "code": "打咩",
+    "src": "/assets/emojis/cube_93.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_93.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_123",
+    "code": "吹口哨",
+    "src": "/assets/emojis/cube_123.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_123.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_126",
+    "code": "蛋糕",
+    "src": "/assets/emojis/cube_126.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_126.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_145",
+    "code": "2026",
+    "src": "/assets/emojis/cube_145.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_145.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_52",
+    "code": "H币",
+    "src": "/assets/emojis/cube_52.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_52.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_72",
+    "code": "圣诞树",
+    "src": "/assets/emojis/cube_72.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_72.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_161",
+    "code": "+1",
+    "src": "/assets/emojis/cube_161.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_161.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_165",
+    "code": "耶",
+    "src": "/assets/emojis/cube_165.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_165.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_166",
+    "code": "鼓掌",
+    "src": "/assets/emojis/cube_166.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_166.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_173",
+    "code": "红包",
+    "src": "/assets/emojis/cube_173.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_173.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_171",
+    "code": "碰拳",
+    "src": "/assets/emojis/cube_171.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_171.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_162",
+    "code": "-1",
+    "src": "/assets/emojis/cube_162.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_162.png",
+    "type": 1,
+    "keyboardHide": false
+  },
+  {
+    "id": "cube_71",
+    "code": "2023",
+    "src": "/assets/emojis/cube_71.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_71.png",
+    "type": 1,
+    "keyboardHide": true
+  },
+  {
+    "id": "cube_81",
+    "code": "阳",
+    "src": "/assets/emojis/cube_81.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_81.png",
+    "type": 1,
+    "keyboardHide": true
+  },
+  {
+    "id": "cube_106",
+    "code": "2024",
+    "src": "/assets/emojis/cube_106.png",
+    "sourceUrl": "https://imgheybox.max-c.com/heybox/emoji/cube_106.png",
+    "type": 1,
+    "keyboardHide": true
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "hb-sdk": {
+      "source": "open.xiaoheihe.cn",
+      "sourceType": "well-known",
+      "computedHash": "f5d71afd689fa2e624024e7e706ff5ec3d34ca3ff7df342fa9dbee6b17d2cfdb"
+    }
+  }
+}
