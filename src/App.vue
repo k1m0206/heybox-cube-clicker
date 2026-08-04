@@ -953,15 +953,65 @@ function hideBrokenAvatar(event: Event) {
 }
 
 let gameRuntimeStarted = false
+let gameRuntimeReady = false
 
 // ============ 存档 ============
+const GAME_SAVE_KEY = 'cube-farm-save'
+interface GameSave {
+  cubeCount?: number
+  clickPower?: number
+  totalCubesEver?: number
+  totalClicks?: number
+  rebirthCount?: number
+  heritagePoints?: number
+  heritageMultiplier?: number
+  robotDoubles?: number
+  playerLevel?: number
+  lastSaveTime?: number
+  selectedSkinId?: string
+  buildings?: Array<{ id: string; count: number }>
+  clickUpgrades?: Array<{ id: string; level: number; cost: number }>
+  synergyUpgrades?: Array<{ id: string; bought: boolean }>
+  rebirthUpgrades?: Array<{ id: string; level: number }>
+}
+
 let tickTimer: number | undefined
 let lastAutosaveAt = 0
+let storageWriteQueue: Promise<void> = Promise.resolve()
+
+function readLocalGameSave(): GameSave | undefined {
+  try {
+    const saved = localStorage.getItem(GAME_SAVE_KEY)
+    if (!saved) return undefined
+    const data = JSON.parse(saved) as GameSave
+    return data && typeof data === 'object' ? data : undefined
+  } catch {
+    return undefined
+  }
+}
+
+async function readGameSave(): Promise<GameSave | undefined> {
+  const localSave = readLocalGameSave()
+  let remoteSave: GameSave | undefined
+
+  try {
+    await hbSDK.ready()
+    remoteSave = (await hbSDK.storage.getStorage<GameSave>({ key: GAME_SAVE_KEY })).data
+  } catch {
+    // 本地调试或旧版宿主没有隔离 Storage 时，继续使用 localStorage 兜底。
+  }
+
+  if (!localSave) return remoteSave
+  if (!remoteSave) return localSave
+  const localTime = Number(localSave.lastSaveTime) || 0
+  const remoteTime = Number(remoteSave.lastSaveTime) || 0
+  return remoteTime >= localTime ? remoteSave : localSave
+}
 
 function handleVisibilityChange() {
   if (document.visibilityState === 'hidden') {
-    if (gameRuntimeStarted) saveGame()
-  } else if (gameRuntimeStarted) {
+    if (gameRuntimeReady) saveGame()
+  } else if (gameRuntimeReady) {
     void trackDailyVisitor()
   }
 }
@@ -977,13 +1027,12 @@ async function syncSafeArea() {
   }
 }
 
-function startGameRuntime() {
+async function startGameRuntime() {
   if (gameRuntimeStarted) return
   gameRuntimeStarted = true
   try {
-    const saved = localStorage.getItem('cube-farm-save')
-    if (saved) {
-      const data = JSON.parse(saved)
+    const data = await readGameSave()
+    if (data) {
       cubeCount.value = data.cubeCount ?? 0; clickPower.value = data.clickPower ?? 1
       totalCubesEver.value = data.totalCubesEver ?? 0; totalClicks.value = data.totalClicks ?? 0
       rebirthCount.value = data.rebirthCount ?? 0; heritagePoints.value = data.heritagePoints ?? 0
@@ -1019,6 +1068,7 @@ function startGameRuntime() {
     }
   } catch { /* ignore */ }
 
+  gameRuntimeReady = true
   lastAutosaveAt = Date.now()
   tickTimer = window.setInterval(() => {
     // 自动点击（模拟真实点击，金色粒子）
@@ -1069,7 +1119,7 @@ function startGameRuntime() {
 
 onMounted(() => {
   void syncSafeArea()
-  startGameRuntime()
+  void startGameRuntime()
 })
 
 onUnmounted(() => {
@@ -1079,12 +1129,13 @@ onUnmounted(() => {
   if (balanceBumpTimer !== undefined) window.clearTimeout(balanceBumpTimer)
   stopAuthListener?.()
   document.removeEventListener('visibilitychange', handleVisibilityChange)
-  if (gameRuntimeStarted) saveGame()
+  if (gameRuntimeReady) saveGame()
   gameRuntimeStarted = false
+  gameRuntimeReady = false
 })
 
 function saveGame() {
-  localStorage.setItem('cube-farm-save', JSON.stringify({
+  const snapshot: GameSave = {
     cubeCount: cubeCount.value, clickPower: clickPower.value,
     totalCubesEver: totalCubesEver.value, totalClicks: totalClicks.value,
     rebirthCount: rebirthCount.value, heritagePoints: heritagePoints.value,
@@ -1095,20 +1146,80 @@ function saveGame() {
     rebirthUpgrades: rebirthUpgrades.value.map(u => ({ id: u.id, level: u.level })),
     playerLevel: playerLevel.value,
     lastSaveTime: Date.now(), selectedSkinId: selectedSkinId.value,
-  }))
+  }
+
+  try {
+    localStorage.setItem(GAME_SAVE_KEY, JSON.stringify(snapshot))
+  } catch {
+    // 宿主回收页面或隐私模式下 localStorage 不可用时，不能阻断游戏运行。
+  }
+
+  storageWriteQueue = storageWriteQueue
+    .catch(() => undefined)
+    .then(() => hbSDK.storage.setStorage({ key: GAME_SAVE_KEY, data: snapshot }))
+    .catch(() => undefined)
 }
 
 function resetGame() {
   resetConfirm.value = true
 }
 
+function resetProgressState() {
+  activeTab.value = 'click'
+  buyMode.value = 1
+
+  cubeCount.value = 0
+  clickPower.value = 1
+  totalCubesEver.value = 0
+  totalClicks.value = 0
+  rebirthCount.value = 0
+  heritagePoints.value = 0
+  heritageMultiplier.value = 1
+  rebirthAutoClick.value = 0
+  robotDoubles.value = 0
+  playerLevel.value = 1
+  selectedSkinId.value = 'cube_21'
+
+  buildings.value.forEach((building) => { building.count = 0 })
+  clickUpgrades.value.forEach((upgrade) => {
+    upgrade.level = 0
+    upgrade.cost = upgrade.baseCost
+  })
+  synergyUpgrades.value.forEach((upgrade) => { upgrade.bought = false })
+  rebirthUpgrades.value.forEach((upgrade) => { upgrade.level = 0 })
+
+  rebirthGoldenDurationBonus.value = 0
+  rebirthGoldenMultiplierBonus.value = 0
+  rebirthGoldenChanceBonus.value = 0
+  rebirthClickMultiplier.value = 1
+  rebirthAutoMultiplier.value = 1
+  rebirthBuildingDiscount.value = 0
+  rebirthOfflineEfficiency.value = 0
+  rebirthHeritageGainBonus.value = 0
+  rebirthSynergyBoost.value = 1
+  rebirthStartBonus.value = 0
+  rebirthGoldenAutoBonus.value = 0
+  rebirthClickCombo.value = 0
+  rebirthLuckBonus.value = 0
+
+  stopGoldenTimer()
+  goldenActive.value = false
+  goldenRemaining.value = 0
+  goldenEndTime.value = 0
+  goldenParticles.value = []
+  autoParticles.value = []
+  particles.value = []
+  particleId = 0
+  offlineModal.value = { show: false, time: '', gain: '', rate: 50 }
+  skinPickerOpen.value = false
+  rebirthConfirm.value = false
+}
+
 function confirmReset() {
-  localStorage.setItem('cube-farm-save', JSON.stringify({
-    playerLevel: playerLevel.value,
-    lastSaveTime: Date.now(),
-  }))
+  resetProgressState()
+  saveGame()
+  lastAutosaveAt = Date.now()
   resetConfirm.value = false
-  location.reload()
 }
 
 function formatTime(seconds: number) {
