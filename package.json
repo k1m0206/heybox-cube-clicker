@@ -1,6 +1,6 @@
 {
   "name": "heybox-cube-clicker",
-  "version": "1.0.3",
+  "version": "1.0.7",
   "private": true,
   "type": "module",
   "heybox": {
@@ -15,7 +15,7 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "@heybox/hb-sdk": "^0.6.5",
+    "@heybox/hb-sdk": "^0.6.7",
     "@lucide/vue": "^1.28.0",
     "vue": "^3.5.40"
   },

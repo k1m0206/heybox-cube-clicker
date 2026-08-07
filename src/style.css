@@ -400,6 +400,25 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+.cube-button::after {
+  content: '';
+  position: absolute;
+  inset: 10px;
+  border: 2px solid rgba(255, 215, 0, 0.7);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.72);
+}
+
+.cube-button.cube-pop {
+  animation: cube-click-pop 240ms cubic-bezier(0.2, 0.8, 0.25, 1.18);
+}
+
+.cube-button.cube-pop::after {
+  animation: cube-click-ring 360ms ease-out;
+}
+
 .cube-button:active {
   transform: scale(0.94);
 }
@@ -421,6 +440,25 @@ body {
   filter:
     drop-shadow(0 8px 16px rgba(0, 0, 0, 0.42))
     drop-shadow(0 0 24px rgba(255, 140, 0, 0.72));
+}
+
+@keyframes cube-click-pop {
+  0% { transform: scale(1); }
+  32% { transform: scale(0.88); }
+  68% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@keyframes cube-click-ring {
+  0% { opacity: 0.9; transform: scale(0.72); }
+  100% { opacity: 0; transform: scale(1.18); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cube-button.cube-pop,
+  .cube-button.cube-pop::after {
+    animation: none;
+  }
 }
 
 /* 粒子 */

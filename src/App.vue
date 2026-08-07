@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import hbSDK, { type LeaderboardEntry, type MiniProgramUserInfo } from '@heybox/hb-sdk'
+import hbSDK, { HbMiniProgramSDKError, type LeaderboardEntry, type MiniProgramUserInfo } from '@heybox/hb-sdk'
 import { ref, computed, onMounted, onUnmounted, type Component } from 'vue'
 import { cubeEmojis } from './data/emojis'
 import {
@@ -90,6 +90,11 @@ const buildings = ref<Building[]>([
   { id: 'lawforge',   name: '法则熔炉',     icon: Sun,          baseCps: 1e30, baseCost: 5e31, count: 0, unlockAt: 5e31 },
   { id: 'rebooter',   name: '宇宙重启器',   icon: RotateCw,     baseCps: 1e32, baseCost: 5e33, count: 0, unlockAt: 5e33 },
   { id: 'terminus',   name: '终焉观测站',   icon: Globe,        baseCps: 1e34, baseCost: 5e35, count: 0, unlockAt: 5e35 },
+  { id: 'abyss',      name: '深渊熔炉',     icon: Flame,        baseCps: 1e36, baseCost: 5e37, count: 0, unlockAt: 5e37 },
+  { id: 'origin',     name: '原初核心',     icon: Diamond,      baseCps: 1e38, baseCost: 5e39, count: 0, unlockAt: 5e39 },
+  { id: 'absolute',   name: '绝对领域',     icon: Orbit,        baseCps: 1e40, baseCost: 5e41, count: 0, unlockAt: 5e41 },
+  { id: 'eternity',   name: '永恒引擎',     icon: Sparkles,     baseCps: 1e42, baseCost: 5e43, count: 0, unlockAt: 5e43 },
+  { id: 'beyond',     name: '超越之门',     icon: Rocket,       baseCps: 1e44, baseCost: 5e45, count: 0, unlockAt: 5e45 },
 ])
 
 // ============ 机器人协同升级 ============
@@ -123,6 +128,11 @@ const synergyUpgrades = ref<SynergyUpgrade[]>([
   { id: 'syn15', name: '法则链接',  icon: Sun,      desc: '机器人产出翻倍。每拥有15个机器人，法则熔炉 +1% 产出', cost: 2e31, bought: false, targetBuildingId: 'lawforge', requiredRobots: 15, unlockAt: 1e31 },
   { id: 'syn16', name: '重启协议',  icon: RotateCw, desc: '机器人产出翻倍。每拥有16个机器人，宇宙重启器 +1% 产出', cost: 2e33, bought: false, targetBuildingId: 'rebooter', requiredRobots: 16, unlockAt: 1e33 },
   { id: 'syn17', name: '终焉观测',  icon: Globe,    desc: '机器人产出翻倍。每拥有17个机器人，终焉观测站 +1% 产出', cost: 2e35, bought: false, targetBuildingId: 'terminus', requiredRobots: 17, unlockAt: 1e35 },
+  { id: 'syn18', name: '深渊回响',  icon: Flame,    desc: '机器人产出翻倍。每拥有18个机器人，深渊熔炉 +1% 产出', cost: 2e37, bought: false, targetBuildingId: 'abyss', requiredRobots: 18, unlockAt: 1e37 },
+  { id: 'syn19', name: '原初脉冲',  icon: Diamond,  desc: '机器人产出翻倍。每拥有19个机器人，原初核心 +1% 产出', cost: 2e39, bought: false, targetBuildingId: 'origin', requiredRobots: 19, unlockAt: 1e39 },
+  { id: 'syn20', name: '绝对秩序',  icon: Orbit,    desc: '机器人产出翻倍。每拥有20个机器人，绝对领域 +1% 产出', cost: 2e41, bought: false, targetBuildingId: 'absolute', requiredRobots: 20, unlockAt: 1e41 },
+  { id: 'syn21', name: '永恒之心',  icon: Sparkles, desc: '机器人产出翻倍。每拥有21个机器人，永恒引擎 +1% 产出', cost: 2e43, bought: false, targetBuildingId: 'eternity', requiredRobots: 21, unlockAt: 1e43 },
+  { id: 'syn22', name: '超越回路',  icon: Rocket,   desc: '机器人产出翻倍。每拥有22个机器人，超越之门 +1% 产出', cost: 2e45, bought: false, targetBuildingId: 'beyond', requiredRobots: 22, unlockAt: 1e45 },
 ])
 
 const robotDoubles = ref(0)
@@ -257,6 +267,11 @@ const clickUpgrades = ref<ClickUpgrade[]>([
   { id: 'clickLawforge', name: '法则改写', icon: Sun, desc: '每次点击 +100穰', baseCost: 1.5e31, cost: 1.5e31, level: 0, unlockAt: 5e30, effect: (n) => { clickPower.value += 1e30 * n } },
   { id: 'clickRebooter', name: '宇宙重构', icon: RotateCw, desc: '每次点击 +1沟', baseCost: 1.5e33, cost: 1.5e33, level: 0, unlockAt: 5e32, effect: (n) => { clickPower.value += 1e32 * n } },
   { id: 'clickTerminus', name: '终焉一指', icon: Globe, desc: '每次点击 +100沟', baseCost: 1.5e35, cost: 1.5e35, level: 0, unlockAt: 5e34, effect: (n) => { clickPower.value += 1e34 * n } },
+  { id: 'clickAbyss', name: '深渊之触', icon: Flame, desc: '每次点击 +1涧', baseCost: 1.5e37, cost: 1.5e37, level: 0, unlockAt: 5e36, effect: (n) => { clickPower.value += 1e36 * n } },
+  { id: 'clickOrigin', name: '原初之手', icon: Diamond, desc: '每次点击 +100涧', baseCost: 1.5e39, cost: 1.5e39, level: 0, unlockAt: 5e38, effect: (n) => { clickPower.value += 1e38 * n } },
+  { id: 'clickAbsolute', name: '绝对裁决', icon: Orbit, desc: '每次点击 +1正', baseCost: 1.5e41, cost: 1.5e41, level: 0, unlockAt: 5e40, effect: (n) => { clickPower.value += 1e40 * n } },
+  { id: 'clickEternity', name: '永恒之指', icon: Sparkles, desc: '每次点击 +100正', baseCost: 1.5e43, cost: 1.5e43, level: 0, unlockAt: 5e42, effect: (n) => { clickPower.value += 1e42 * n } },
+  { id: 'clickBeyond', name: '超越一击', icon: Rocket, desc: '每次点击 +1载', baseCost: 1.5e45, cost: 1.5e45, level: 0, unlockAt: 5e44, effect: (n) => { clickPower.value += 1e44 * n } },
 ])
 
 // 自动点击升级：根据每秒产量动态解锁和定价
@@ -277,6 +292,12 @@ const autoClickTiers = [
   { cpsRequired: 1e29, cost: 1e31 },
   { cpsRequired: 1e31, cost: 1e33 },
   { cpsRequired: 1e33, cost: 1e35 },
+  { cpsRequired: 1e35, cost: 1e37 },
+  { cpsRequired: 1e37, cost: 1e39 },
+  { cpsRequired: 1e39, cost: 1e41 },
+  { cpsRequired: 1e41, cost: 1e43 },
+  { cpsRequired: 1e43, cost: 1e45 },
+  { cpsRequired: 1e45, cost: 1e47 },
 ]
 
 const availableAutoClickUpgrade = computed(() => {
@@ -292,6 +313,7 @@ function buyAutoClickUpgrade() {
   if (!upgrade || cubeCount.value < upgrade.cost) return
   cubeCount.value -= upgrade.cost
   rebirthAutoClick.value++
+  saveGame()
   triggerPurchaseFeedback('auto-click')
 }
 
@@ -549,8 +571,16 @@ interface Particle { id: number; x: number; isGolden: boolean; gain?: number }
 const particles = ref<Particle[]>([])
 let particleId = 0
 const MAX_PARTICLES = 15 // 限制最大粒子数
+const cubePressed = ref(false)
+let cubePressedTimer: number | undefined
 
 function clickCube() {
+  cubePressed.value = true
+  if (cubePressedTimer !== undefined) window.clearTimeout(cubePressedTimer)
+  cubePressedTimer = window.setTimeout(() => {
+    cubePressed.value = false
+    cubePressedTimer = undefined
+  }, 240)
   const power = effectiveClickPower.value
   const multiplier = goldenActive.value ? goldenMultiplier.value : 1
   const gain = power * multiplier
@@ -678,6 +708,7 @@ async function trackDailyVisitor(throwOnError = false) {
   } catch (error) {
     if (throwOnError) throw error
     // 隐藏统计榜不可用时不影响正常游戏和公开等级榜。
+    console.warn('[cube-clicker] trackDailyVisitor failed', error)
   }
 }
 
@@ -733,7 +764,8 @@ async function loadVisitorStats() {
 
     visitorStatsToday.value = todayCount
     visitorStatsTotal.value = totalCount
-  } catch {
+  } catch (error) {
+    console.error('[cube-clicker] loadVisitorStats failed', error)
     visitorStatsMessage.value = '访问统计暂不可用，请稍后刷新。'
   } finally {
     visitorStatsLoading.value = false
@@ -762,7 +794,8 @@ async function connectLeaderboard() {
       await trackDailyVisitor()
     }
     await loadLeaderboard()
-  } catch {
+  } catch (error) {
+    console.error('[cube-clicker] connectLeaderboard failed', error)
     sdkConnected.value = false
     leaderboardHasError.value = true
     leaderboardMessage.value = '当前不在小黑盒运行环境中，排行榜暂不可用。'
@@ -787,7 +820,8 @@ async function loginToLeaderboard() {
     await syncPlayerLevel()
     await trackDailyVisitor()
     await loadLeaderboard()
-  } catch {
+  } catch (error) {
+    console.error('[cube-clicker] loginToLeaderboard failed', error)
     leaderboardHasError.value = true
     leaderboardMessage.value = '登录失败，请稍后重试。'
   } finally {
@@ -810,14 +844,17 @@ async function syncPlayerLevel() {
     if (!currentEntry || cloudLevel < playerLevel.value) {
       await submitPlayerLevel()
     }
-  } catch {
+  } catch (error) {
     // 榜单尚未创建或临时不可用时不影响本地游戏和等级。
+    console.warn('[cube-clicker] syncPlayerLevel failed', error)
   }
 }
 
 async function levelUp() {
   if (!canLevelUp.value) return
   levelUpLoading.value = true
+  leaderboardMessage.value = ''
+  leaderboardHasError.value = false
   try {
     const cost = nextLevelCost.value
     cubeCount.value -= cost
@@ -826,25 +863,19 @@ async function levelUp() {
 
     if (LOCAL_LEADERBOARD_PREVIEW) {
       loadLocalLeaderboard()
-      leaderboardMessage.value = `升级成功，当前等级 Lv.${playerLevel.value}`
-      leaderboardHasError.value = false
+      leaderboardMessage.value = ''
       return
     }
 
     if (!currentUser.value) {
-      leaderboardMessage.value = `升级成功，登录后可将 Lv.${playerLevel.value} 同步到排行榜。`
-      leaderboardHasError.value = false
       return
     }
 
-    leaderboardMessage.value = '升级成功，正在同步排行榜…'
-    leaderboardHasError.value = false
     await submitPlayerLevel()
-    await loadLeaderboard()
-    leaderboardMessage.value = `升级成功，当前等级 Lv.${playerLevel.value}`
-  } catch {
-    leaderboardHasError.value = true
-    leaderboardMessage.value = `已升级至 Lv.${playerLevel.value}，排行榜同步失败，请点击刷新重试。`
+    await loadLeaderboard(true)
+  } catch (error) {
+    // 升级后的榜单同步在后台静默失败，不打扰升级主流程。
+    console.warn('[cube-clicker] level-up leaderboard sync failed', error)
   } finally {
     levelUpLoading.value = false
   }
@@ -852,21 +883,59 @@ async function levelUp() {
 
 async function submitPlayerLevel() {
   if (!currentUser.value) return
-  await hbSDK.cloud.leaderboard.submit({
-    key: LEVEL_LEADERBOARD_KEY,
-    score: playerLevel.value,
-    extra: {
-      level: playerLevel.value,
-      nickname: currentUser.value.nickname,
-      avatar: currentUser.value.avatar,
-    },
-  })
+  try {
+    await hbSDK.cloud.leaderboard.submit({
+      key: LEVEL_LEADERBOARD_KEY,
+      score: playerLevel.value,
+      extra: {
+        level: playerLevel.value,
+        nickname: currentUser.value.nickname,
+        avatar: currentUser.value.avatar,
+      },
+    })
+  } catch (error) {
+    console.error('[cube-clicker] submitPlayerLevel failed', error)
+    throw error
+  }
 }
 
-async function loadLeaderboard() {
+function getLeaderboardErrorMessage(error: unknown) {
+  if (!(error instanceof HbMiniProgramSDKError)) {
+    return '排行榜加载失败，请稍后重试。'
+  }
+
+  const errorMessages: Record<string, string> = {
+    PERMISSION_DENIED: '排行榜读取权限未开放，请联系管理员检查运行时权限。',
+    LEADERBOARD_DEFAULT_NOT_FOUND: `排行榜 ${LEVEL_LEADERBOARD_KEY} 尚未创建。`,
+    LEADERBOARD_TABLE_NOT_READY: '排行榜正在初始化，请稍后重试。',
+    LEADERBOARD_LIMIT_EXCEEDED: '小程序排行榜数量已达上限。',
+    LEADERBOARD_SUBMIT_LOCKED: '排行榜提交冲突，请稍后重试。',
+    NotFound: `远端未找到排行榜 ${LEVEL_LEADERBOARD_KEY}。`,
+    INVALID_PARAMS: '排行榜查询参数无效。',
+    InvalidArgument: '排行榜查询参数无效。',
+    ResourceExhausted: '排行榜服务容量超限，请稍后重试。',
+    UNAUTHORIZED: '登录状态已失效，请重新登录后重试。',
+    Unauthenticated: '登录状态已失效，请重新登录后重试。',
+    RUNTIME_UNAVAILABLE: '小程序运行时已卸载，请重新打开。',
+    REQUEST_TIMEOUT: '排行榜请求超时，请检查网络后重试。',
+  }
+
+  // 宿主传输层错误单独提示，便于用户反馈。
+  if (error.code.startsWith('runtime.transport')) {
+    return `排行榜服务暂不可用，请稍后重试。若持续出现请联系技术支持。（${error.code}）`
+  }
+
+  return `${errorMessages[error.code] ?? '排行榜服务暂不可用，请稍后重试。'}（${error.code}）`
+}
+
+async function loadLeaderboard(silent = false) {
   if (leaderboardLoading.value) return
   if (LOCAL_LEADERBOARD_PREVIEW) {
     loadLocalLeaderboard()
+    if (silent) {
+      leaderboardMessage.value = ''
+      leaderboardHasError.value = false
+    }
     return
   }
   if (!sdkConnected.value) return
@@ -881,10 +950,13 @@ async function loadLeaderboard() {
       limit: LEVEL_LEADERBOARD_LIMIT,
     })
     leaderboardEntries.value = result.entries
-  } catch {
+  } catch (error) {
+    console.error('[cube-clicker] leaderboard.getList failed', error)
     leaderboardEntries.value = []
-    leaderboardHasError.value = true
-    leaderboardMessage.value = `排行榜加载失败，请确认已创建 key 为 ${LEVEL_LEADERBOARD_KEY} 的降序排行榜。`
+    if (!silent) {
+      leaderboardHasError.value = true
+      leaderboardMessage.value = getLeaderboardErrorMessage(error)
+    }
   } finally {
     leaderboardLoading.value = false
   }
@@ -966,6 +1038,7 @@ interface GameSave {
   heritagePoints?: number
   heritageMultiplier?: number
   robotDoubles?: number
+  rebirthAutoClick?: number
   playerLevel?: number
   lastSaveTime?: number
   selectedSkinId?: string
@@ -1039,6 +1112,7 @@ async function startGameRuntime() {
       heritageMultiplier.value = data.heritageMultiplier ?? 1; selectedSkinId.value = data.selectedSkinId ?? 'cube_21'
       playerLevel.value = Math.max(1, Math.floor(Number(data.playerLevel) || 1))
       robotDoubles.value = data.robotDoubles ?? 0
+      rebirthAutoClick.value = Math.max(0, Math.floor(Number(data.rebirthAutoClick) || 0))
       if (data.buildings) data.buildings.forEach((s: { id: string; count: number }) => { const b = buildings.value.find(b => b.id === s.id); if (b) b.count = s.count })
       if (data.clickUpgrades) data.clickUpgrades.forEach((s: { id: string; level: number; cost: number }) => {
         const u = clickUpgrades.value.find(u => u.id === s.id)
@@ -1049,12 +1123,14 @@ async function startGameRuntime() {
         const u = rebirthUpgrades.value.find(y => y.id === s.id)
         if (u) { u.level = s.level; for (let i = 0; i < s.level; i++) u.effect() }
       })
-      if (data.lastSaveTime && totalCps.value > 0) {
-        const elapsed = Math.floor((Date.now() - data.lastSaveTime) / 1000)
+      const offlineCps = effectiveAutoRate.value + effectiveClickPower.value * rebirthAutoClick.value
+      if (data.lastSaveTime && offlineCps > 0) {
+        const elapsed = Math.max(0, Math.floor((Date.now() - data.lastSaveTime) / 1000))
         const offlineRate = 0.5 + rebirthOfflineEfficiency.value
-        const offlineGain = Math.min(elapsed, 28800) * effectiveAutoRate.value * offlineRate
+        const offlineGain = Math.min(elapsed, 28800) * offlineCps * offlineRate
         if (offlineGain > 0) {
           cubeCount.value += offlineGain; totalCubesEver.value += offlineGain
+          saveGame()
           setTimeout(() => {
             offlineModal.value = {
               show: true,
@@ -1127,6 +1203,7 @@ onUnmounted(() => {
   stopGoldenTimer()
   if (purchaseCardTimer !== undefined) window.clearTimeout(purchaseCardTimer)
   if (balanceBumpTimer !== undefined) window.clearTimeout(balanceBumpTimer)
+  if (cubePressedTimer !== undefined) window.clearTimeout(cubePressedTimer)
   stopAuthListener?.()
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   if (gameRuntimeReady) saveGame()
@@ -1140,6 +1217,7 @@ function saveGame() {
     totalCubesEver: totalCubesEver.value, totalClicks: totalClicks.value,
     rebirthCount: rebirthCount.value, heritagePoints: heritagePoints.value,
     heritageMultiplier: heritageMultiplier.value, robotDoubles: robotDoubles.value,
+    rebirthAutoClick: rebirthAutoClick.value,
     buildings: buildings.value.map(b => ({ id: b.id, count: b.count })),
     clickUpgrades: clickUpgrades.value.map(u => ({ id: u.id, level: u.level, cost: u.cost })),
     synergyUpgrades: synergyUpgrades.value.map(s => ({ id: s.id, bought: s.bought })),
@@ -1231,6 +1309,12 @@ function formatTime(seconds: number) {
 
 function formatNumber(n: number) {
   if (!Number.isFinite(n) || n < 0) return '0'
+  if (n >= 1e68) return (n / 1e68).toFixed(2) + '无量大数'
+  if (n >= 1e64) return (n / 1e64).toFixed(2) + '不可思议'
+  if (n >= 1e60) return (n / 1e60).toFixed(2) + '那由他'
+  if (n >= 1e56) return (n / 1e56).toFixed(2) + '阿僧祇'
+  if (n >= 1e52) return (n / 1e52).toFixed(2) + '恒河沙'
+  if (n >= 1e48) return (n / 1e48).toFixed(2) + '极'
   if (n >= 1e44) return (n / 1e44).toFixed(2) + '载'
   if (n >= 1e40) return (n / 1e40).toFixed(2) + '正'
   if (n >= 1e36) return (n / 1e36).toFixed(2) + '涧'
@@ -1322,7 +1406,7 @@ function formatNumber(n: number) {
       <div class="cube-area">
         <div class="cube-count" :class="{ golden: goldenActive }">{{ formatNumber(cubeCount) }}</div>
         <div class="cube-label">cube</div>
-        <button class="cube-button" :class="{ 'golden-glow': goldenActive }" @click="clickCube">
+        <button class="cube-button" :class="{ 'golden-glow': goldenActive, 'cube-pop': cubePressed }" @click="clickCube">
           <img v-if="goldenActive" :src="goldenClickEmoji.src" :alt="goldenClickEmoji.code" class="cube-emoji" />
           <img v-else :src="clickEmoji.src" :alt="clickEmoji.code" class="cube-emoji" />
           <div v-for="p in particles" :key="p.id" class="particle" :class="{ golden: p.isGolden }" :style="{ '--x': p.x + 'px' }">
