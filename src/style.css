@@ -1560,13 +1560,14 @@ body {
   cursor: not-allowed;
 }
 
-.level-up-buttons {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
 .level-up-area .max-level-up-btn {
+  grid-column: 1 / -1;
+  width: auto;
+  justify-self: end;
+  justify-content: center;
+  margin-top: 3px;
+  padding: 6px 9px;
+  font-size: 11px;
   border-color: rgba(167, 139, 250, 0.55);
   background: linear-gradient(135deg, #6d28d9, #4338ca);
   color: #f5f3ff;
@@ -1828,10 +1829,21 @@ body {
 }
 
 @media (max-width: 430px) {
-  .player-level-card { align-items: stretch; flex-direction: column; }
-  .level-up-area { grid-template-columns: 1fr auto; }
-  .level-up-buttons { justify-content: flex-end; }
-  .player-level-copy > span { max-width: 180px; }
+  .player-level-card {
+    align-items: center;
+    flex-direction: row;
+    gap: 8px;
+    padding: 12px;
+  }
+  .player-profile { gap: 7px; }
+  .player-avatar { width: 42px; height: 42px; }
+  .player-level-copy > span { max-width: 88px; }
+  .player-level-copy strong { font-size: 20px; }
+  .level-up-area {
+    grid-template-columns: auto auto;
+    gap: 2px 5px;
+  }
+  .level-up-area .max-level-up-btn { margin-top: 1px; padding: 5px 8px; }
 }
 
 .max-level-modal {

@@ -2,6 +2,9 @@
 import hbSDK, { HbMiniProgramSDKError, type LeaderboardEntry, type MiniProgramUserInfo } from '@heybox/hb-sdk'
 import { ref, computed, onMounted, onUnmounted, type Component } from 'vue'
 import { cubeEmojis } from './data/emojis'
+import {
+  CLICK_COMBO_WINDOW_MS, advanceClickCombo, calculateManualClickGain, rollGoldenLuckBonus,
+} from './click-engine'
 import ExpeditionPage from './components/expedition/ExpeditionPage.vue'
 import {
   BLUEPRINT_REASSIGN_COST, GALAXY_BUILDING_INDEX, RELICS, TEMP_UPGRADES,
@@ -524,11 +527,11 @@ const rebirthUpgrades = ref<RebirthUpgrade[]>([
     effect: () => { rebirthGoldenDurationBonus.value += 5 } },
   { id: 'rGMul', name: '提升倍率', icon: TrendingUp, desc: '黄金时段倍率 +2x', maxLevel: 10, costPerLevel: [5,8,11,14,17,20,23,26,29,32], level: 0, category: 'golden',
     effect: () => { rebirthGoldenMultiplierBonus.value += 2 } },
-  { id: 'rGChance', name: '增加概率', icon: Percent, desc: '黄金时段出现概率 +50%', maxLevel: 8, costPerLevel: [2,4,6,8,10,12,14,16], level: 0, category: 'golden',
+  { id: 'rGChance', name: '增加概率', icon: Percent, desc: '黄金时段出现概率每级 +0.25个百分点', maxLevel: 8, costPerLevel: [2,4,6,8,10,12,14,16], level: 0, category: 'golden',
     effect: () => { rebirthGoldenChanceBonus.value += 0.0025 } },
   { id: 'rGFreeze', name: '时间冻结', icon: Orbit, desc: '黄金时段额外 +3秒', maxLevel: 5, costPerLevel: [8,12,16,20,24], level: 0, category: 'golden',
     effect: () => { rebirthGoldenDurationBonus.value += 3 } },
-  { id: 'rGLuck', name: '幸运加成', icon: Sparkles, desc: '黄金时段额外随机 +0~5x 倍率', maxLevel: 10, costPerLevel: [4,7,10,13,16,19,22,25,28,31], level: 0, category: 'golden',
+  { id: 'rGLuck', name: '幸运加成', icon: Sparkles, desc: '每级使黄金时段额外随机倍率上限 +5x', maxLevel: 10, costPerLevel: [4,7,10,13,16,19,22,25,28,31], level: 0, category: 'golden',
     effect: () => { rebirthLuckBonus.value += 5 } },
   { id: 'rGAuto', name: '黄金收割', icon: Flame, desc: '黄金时段自动点击额外 +50%', maxLevel: 5, costPerLevel: [6,10,14,18,22], level: 0, category: 'golden',
     effect: () => { rebirthGoldenAutoBonus.value += 0.5 } },
@@ -537,7 +540,7 @@ const rebirthUpgrades = ref<RebirthUpgrade[]>([
     effect: () => { rebirthClickMultiplier.value *= 2 } },
   { id: 'rAuto', name: '挂机之心', icon: Zap, desc: '挂机收益 x1.5', maxLevel: 10, costPerLevel: [4,7,10,13,16,19,22,25,28,31], level: 0, category: 'boost',
     effect: () => { rebirthAutoMultiplier.value *= 1.5 } },
-  { id: 'rCombo', name: '连击大师', icon: Swords, desc: '连续点击时收益递增 (最多+50%)', maxLevel: 5, costPerLevel: [6,10,14,18,22], level: 0, category: 'boost',
+  { id: 'rCombo', name: '连击大师', icon: Swords, desc: '1秒内连续点击每次 +2%，每级上限 +10%', maxLevel: 5, costPerLevel: [6,10,14,18,22], level: 0, category: 'boost',
     effect: () => { rebirthClickCombo.value += 0.1 } },
   // 建筑系列
   { id: 'rBuildingPower', name: '建筑超频', icon: Factory, desc: '所有建筑产出 x1.25', maxLevel: 10, costPerLevel: [6,9,12,15,18,21,24,27,30,33], level: 0, category: 'building',
@@ -611,6 +614,8 @@ const maxLevelConfirm = ref<{ startLevel: number; levels: number; targetLevel: n
 const goldenActive = ref(false)
 const goldenRemaining = ref(0)
 const goldenEndTime = ref(0)
+const goldenLuckBonus = ref(0)
+const activeGoldenMultiplier = computed(() => goldenMultiplier.value + goldenLuckBonus.value)
 const fallingGoldenCubeVisible = ref(false)
 const fallingGoldenCubeX = ref(50)
 let goldenTimer: number | undefined
@@ -641,6 +646,7 @@ function collectFallingGoldenCube() {
 
 function startGoldenPeriod() {
   if (goldenActive.value) return
+  goldenLuckBonus.value = rollGoldenLuckBonus(rebirthLuckBonus.value)
   goldenActive.value = true
   goldenEndTime.value = Date.now() + goldenDuration.value * 1000
   goldenRemaining.value = goldenDuration.value
@@ -651,6 +657,7 @@ function startGoldenPeriod() {
     if (goldenRemaining.value !== remaining) goldenRemaining.value = remaining
     if (remaining <= 0) {
       goldenActive.value = false
+      goldenLuckBonus.value = 0
       goldenTimer = undefined
       return
     }
@@ -664,6 +671,7 @@ function stopGoldenTimer() {
     window.clearTimeout(goldenTimer)
     goldenTimer = undefined
   }
+  goldenLuckBonus.value = 0
   dismissFallingGoldenCube()
 }
 
@@ -680,6 +688,39 @@ const MAX_PARTICLES = 24
 const MAX_CLICK_RIPPLES = 12
 const PARTICLE_LIFETIME_MS = 650
 let cubePressAnimation: Animation | undefined
+const clickComboBonus = ref(0)
+let lastManualClickAt = 0
+let clickComboResetTimer: number | undefined
+const displayedClickPower = computed(() => calculateManualClickGain(
+  effectiveClickPower.value,
+  clickComboBonus.value,
+  goldenActive.value ? activeGoldenMultiplier.value : 1,
+))
+
+function refreshClickCombo(now: number) {
+  clickComboBonus.value = advanceClickCombo(
+    clickComboBonus.value,
+    rebirthClickCombo.value,
+    lastManualClickAt,
+    now,
+  )
+  lastManualClickAt = now
+  if (clickComboResetTimer !== undefined) window.clearTimeout(clickComboResetTimer)
+  clickComboResetTimer = window.setTimeout(() => {
+    clickComboBonus.value = 0
+    lastManualClickAt = 0
+    clickComboResetTimer = undefined
+  }, CLICK_COMBO_WINDOW_MS)
+}
+
+function resetClickCombo() {
+  clickComboBonus.value = 0
+  lastManualClickAt = 0
+  if (clickComboResetTimer !== undefined) {
+    window.clearTimeout(clickComboResetTimer)
+    clickComboResetTimer = undefined
+  }
+}
 
 function playCubePressAnimation() {
   const button = cubeButtonRef.value
@@ -699,15 +740,14 @@ function playCubePressAnimation() {
 
 function clickCube() {
   playCubePressAnimation()
+  refreshClickCombo(Date.now())
   const rippleId = ++particleId
   if (clickRipples.value.length >= MAX_CLICK_RIPPLES) clickRipples.value.shift()
   clickRipples.value.push(rippleId)
   window.setTimeout(() => {
     clickRipples.value = clickRipples.value.filter(id => id !== rippleId)
   }, 400)
-  const power = effectiveClickPower.value
-  const multiplier = goldenActive.value ? goldenMultiplier.value : 1
-  const gain = power * multiplier
+  const gain = displayedClickPower.value
   cubeCount.value += gain; totalCubesEver.value += gain; totalClicks.value++
   const id = ++particleId; const x = Math.random() * 60 - 30
   // 限制粒子数量，移除最旧的
@@ -749,6 +789,7 @@ function confirmRebirth() {
   if (buildings.value[0]) buildings.value[0].count = rebirthStartingRobots.value
   clickUpgrades.value.forEach(u => { u.level = 0; u.cost = u.baseCost })
   rebirthAutoClick.value = 0
+  resetClickCombo()
   synergyUpgrades.value.forEach(s => { s.bought = false })
   expedition.value = resetExpeditionCycle(expedition.value, Date.now())
   rebirthConfirm.value = false
@@ -1469,7 +1510,7 @@ async function startGameRuntime() {
     refreshExpeditionRuntime(now)
     // 自动点击（模拟真实点击，金色粒子）
     if (rebirthAutoClick.value > 0) {
-      const multiplier = goldenActive.value ? goldenMultiplier.value * (1 + rebirthGoldenAutoBonus.value) : 1
+      const multiplier = goldenActive.value ? activeGoldenMultiplier.value * (1 + rebirthGoldenAutoBonus.value) : 1
       const gain = effectiveClickPower.value * rebirthAutoClick.value * multiplier
       cubeCount.value += gain; totalCubesEver.value += gain
       if (particles.value.length < MAX_PARTICLES) {
@@ -1481,7 +1522,7 @@ async function startGameRuntime() {
 
     // 自动产出（绿色飘字）
     if (worldAutoRate.value > 0) {
-      const multiplier = goldenActive.value ? goldenMultiplier.value : 1
+      const multiplier = goldenActive.value ? activeGoldenMultiplier.value : 1
       const gain = worldAutoRate.value * multiplier
       cubeCount.value += gain; totalCubesEver.value += gain
       if (autoParticles.value.length < 3) {
@@ -1522,6 +1563,7 @@ onUnmounted(() => {
   stopGoldenTimer()
   if (purchaseCardTimer !== undefined) window.clearTimeout(purchaseCardTimer)
   if (balanceBumpTimer !== undefined) window.clearTimeout(balanceBumpTimer)
+  resetClickCombo()
   cubePressAnimation?.cancel()
   stopAuthListener?.()
   document.removeEventListener('visibilitychange', handleVisibilityChange)
@@ -1608,6 +1650,7 @@ function resetProgressState() {
   rebirthGoldenAutoBonus.value = 0
   rebirthClickCombo.value = 0
   rebirthLuckBonus.value = 0
+  resetClickCombo()
 
   stopGoldenTimer()
   goldenActive.value = false
@@ -1696,7 +1739,7 @@ function formatNumber(n: number) {
       </h1>
       <div class="stats">
         <span class="level-stat"><Trophy :size="14" /> Lv.{{ playerLevel }}</span>
-        <span><Hammer :size="14" /> {{ formatNumber(effectiveClickPower) }}/次</span>
+        <span><Hammer :size="14" /> {{ formatNumber(displayedClickPower) }}/次</span>
         <span><Zap :size="14" /> {{ formatNumber(worldAutoRate) }}/秒</span>
         <span v-if="heritagePoints > 0" class="heritage-stat"><Landmark :size="14" /> {{ heritagePoints }}</span>
       </div>
@@ -1721,7 +1764,7 @@ function formatNumber(n: number) {
     <Transition name="golden-banner-fade">
       <div v-if="goldenActive" class="golden-banner-layer">
         <div class="golden-banner">
-          <Sparkles :size="16" /> 黄金时段 {{ goldenMultiplier }}x · {{ goldenRemaining }}秒 <Sparkles :size="16" />
+          <Sparkles :size="16" /> 黄金时段 {{ activeGoldenMultiplier }}x · {{ goldenRemaining }}秒 <Sparkles :size="16" />
         </div>
       </div>
     </Transition>
@@ -1761,7 +1804,7 @@ function formatNumber(n: number) {
           <img v-else :src="clickEmoji.src" :alt="clickEmoji.code" class="cube-emoji" />
           <span v-for="ripple in clickRipples" :key="ripple" class="cube-click-ripple" aria-hidden="true"></span>
           <div v-for="p in particles" :key="p.id" class="particle" :class="{ golden: p.isGolden }" :style="{ '--x': p.x + 'px' }">
-            +{{ formatNumber(p.gain ?? effectiveClickPower * (goldenActive ? goldenMultiplier : 1)) }}
+            +{{ formatNumber(p.gain ?? displayedClickPower) }}
           </div>
         </button>
         <div v-for="a in autoParticles" :key="a.id" class="auto-particle">{{ a.text }}</div>
@@ -1998,15 +2041,13 @@ function formatNumber(n: number) {
           <div class="level-up-area">
             <span>升至 Lv.{{ playerLevel + 1 }}</span>
             <strong><img :src="clickEmoji.src" alt="" /> {{ formatNumber(nextLevelCost) }}</strong>
-            <div class="level-up-buttons">
-              <button :disabled="!canLevelUp" @click="levelUp">
-                <ArrowUpCircle :size="16" />
-                {{ levelUpLoading ? '同步中…' : '升级' }}
-              </button>
-              <button class="max-level-up-btn" :disabled="!canMaxLevelUp" @click="openMaxLevelConfirm">
-                <TrendingUp :size="15" />一键升级
-              </button>
-            </div>
+            <button :disabled="!canLevelUp" @click="levelUp">
+              <ArrowUpCircle :size="16" />
+              {{ levelUpLoading ? '同步中…' : '升级' }}
+            </button>
+            <button class="max-level-up-btn" :disabled="!canMaxLevelUp" @click="openMaxLevelConfirm">
+              <TrendingUp :size="15" />一键升级
+            </button>
           </div>
         </section>
 
