@@ -1,6 +1,6 @@
 {
   "name": "heybox-cube-clicker",
-  "version": "1.0.7",
+  "version": "1.2.1",
   "private": true,
   "type": "module",
   "heybox": {
@@ -12,7 +12,8 @@
     "deploy": "hb-sdk remote deploy",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@heybox/hb-sdk": "^0.6.7",
@@ -24,6 +25,7 @@
     "@vitejs/plugin-vue": "^6.0.8",
     "typescript": "~6.0.2",
     "vite": "^8.2.0",
+    "vitest": "^3.2.4",
     "vue-tsc": "^3.3.8"
   }
 }
