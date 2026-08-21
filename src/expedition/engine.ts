@@ -567,36 +567,36 @@ export function resolveExpeditionEvent(
 
   switch (event.eventId) {
     case 'lostCargo':
-      if (optionId === 'a') dustMultiplier = 1.25
-      else cubeMultiplier = 1.08
+      if (optionId === 'a') dustMultiplier = 1.60
+      else cubeMultiplier = 1.18
       break
     case 'timeWhirlpool':
-      if (optionId === 'a') timeSandRefund = 2
-      else { multiplyModifier('durationMultiplier', 0.96); multiplyModifier('powerMultiplier', 0.98) }
+      if (optionId === 'a') timeSandRefund = 8
+      else { multiplyModifier('durationMultiplier', 0.85); multiplyModifier('powerMultiplier', 0.90) }
       break
     case 'unstableCrystal':
-      if (optionId === 'a') { dustMultiplier = 1.40; multiplyModifier('powerMultiplier', 0.98) }
-      else dustMultiplier = 1.15
+      if (optionId === 'a') { dustMultiplier = 1.90; multiplyModifier('powerMultiplier', 0.92) }
+      else dustMultiplier = 1.35
       break
     case 'driftingFleet':
-      if (optionId === 'a') { multiplyModifier('powerMultiplier', 1.03); multiplyModifier('dustMultiplier', 0.98) }
-      else cubeMultiplier = 1.05
+      if (optionId === 'a') { multiplyModifier('powerMultiplier', 1.10); multiplyModifier('dustMultiplier', 0.90) }
+      else cubeMultiplier = 1.15
       break
     case 'ancientBeacon':
-      if (optionId === 'a') { modifiers.returnRateBonus += 0.02; multiplyModifier('dustMultiplier', 0.98) }
-      else dustMultiplier = 1.20
+      if (optionId === 'a') { modifiers.returnRateBonus += 0.05; multiplyModifier('dustMultiplier', 0.90) }
+      else dustMultiplier = 1.45
       break
     case 'dimensionalTide':
-      if (optionId === 'a') { multiplyModifier('dustMultiplier', 1.05); modifiers.returnRateBonus -= 0.02 }
-      else { timeSandRefund = 1; dustMultiplier = 1.10 }
+      if (optionId === 'a') { multiplyModifier('dustMultiplier', 1.20); modifiers.returnRateBonus -= 0.05 }
+      else { timeSandRefund = 3; dustMultiplier = 1.30 }
       break
     case 'brokenGate':
-      if (optionId === 'a') { multiplyModifier('durationMultiplier', 0.96); modifiers.returnRateBonus -= 0.01 }
-      else multiplyModifier('powerMultiplier', 1.02)
+      if (optionId === 'a') { multiplyModifier('durationMultiplier', 0.85); modifiers.returnRateBonus -= 0.03 }
+      else multiplyModifier('powerMultiplier', 1.08)
       break
     case 'mirrorUniverse':
-      if (optionId === 'a') { dustMultiplier = 1.30; cubeMultiplier = 0.95 }
-      else { cubeMultiplier = 1.05; dustMultiplier = 0.90 }
+      if (optionId === 'a') { dustMultiplier = 1.65; cubeMultiplier = 0.85 }
+      else { cubeMultiplier = 1.15; dustMultiplier = 0.80 }
       break
   }
 

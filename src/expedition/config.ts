@@ -133,35 +133,35 @@ export const EXPEDITION_EVENTS: Record<ExpeditionEventId, {
 }> = {
   lostCargo: {
     name: '遗失货舱', desc: '一组封存货舱漂浮在破碎航道中央。', image: 'events/lost-cargo.webp',
-    options: [{ id: 'a', name: '回收货舱', desc: '本次远征货币 ×1.25' }, { id: 'b', name: '拆解修复', desc: '本次cube奖励 ×1.08' }],
+    options: [{ id: 'a', name: '回收货舱', desc: '本次远征货币 ×1.60' }, { id: 'b', name: '拆解修复', desc: '本次cube奖励 ×1.18' }],
   },
   timeWhirlpool: {
     name: '时间涡流', desc: '失控的时间流在舰队周围形成闭环。', image: 'events/time-whirlpool.webp',
-    options: [{ id: 'a', name: '抽取余能', desc: '返还2远征体力' }, { id: 'b', name: '借道穿行', desc: '本轮时间 ×0.96，战力 ×0.98' }],
+    options: [{ id: 'a', name: '抽取余能', desc: '返还8远征体力' }, { id: 'b', name: '借道穿行', desc: '本轮时间 ×0.85，战力 ×0.90' }],
   },
   unstableCrystal: {
     name: '不稳定晶簇', desc: '高能晶体正在崩解，短暂释放巨量物质。', image: 'events/unstable-crystal.webp',
-    options: [{ id: 'a', name: '过载采集', desc: '本次远征货币 ×1.40，本轮战力 ×0.98' }, { id: 'b', name: '安全封存', desc: '本次远征货币 ×1.15' }],
+    options: [{ id: 'a', name: '过载采集', desc: '本次远征货币 ×1.90，本轮战力 ×0.92' }, { id: 'b', name: '安全封存', desc: '本次远征货币 ×1.35' }],
   },
   driftingFleet: {
     name: '漂流舰队', desc: '失去指挥的无人舰队仍在执行古老指令。', image: 'events/drifting-fleet.webp',
-    options: [{ id: 'a', name: '接入编队', desc: '本轮战力 ×1.03，远征货币 ×0.98' }, { id: 'b', name: '援助回收', desc: '本次cube奖励 ×1.05' }],
+    options: [{ id: 'a', name: '接入编队', desc: '本轮战力 ×1.10，远征货币 ×0.90' }, { id: 'b', name: '援助回收', desc: '本次cube奖励 ×1.15' }],
   },
   ancientBeacon: {
     name: '古代信标', desc: '沉睡的信标能够校准返航坐标。', image: 'events/ancient-beacon.webp',
-    options: [{ id: 'a', name: '重新校准', desc: '本轮返还率 +2%，远征货币 ×0.98' }, { id: 'b', name: '拆解信标', desc: '本次远征货币 ×1.20' }],
+    options: [{ id: 'a', name: '重新校准', desc: '本轮返还率 +5%，远征货币 ×0.90' }, { id: 'b', name: '拆解信标', desc: '本次远征货币 ×1.45' }],
   },
   dimensionalTide: {
     name: '维度潮汐', desc: '物质潮汐正在横穿当前星域。', image: 'events/dimensional-tide.webp',
-    options: [{ id: 'a', name: '顺潮采集', desc: '本轮远征货币 ×1.05，返还率 −2%' }, { id: 'b', name: '规避浪涌', desc: '返还1远征体力，本次远征货币 ×1.10' }],
+    options: [{ id: 'a', name: '顺潮采集', desc: '本轮远征货币 ×1.20，返还率 −5%' }, { id: 'b', name: '规避浪涌', desc: '返还3远征体力，本次远征货币 ×1.30' }],
   },
   brokenGate: {
     name: '破损跃迁门', desc: '半毁的跃迁门仍残留可用的空间坐标。', image: 'events/broken-gate.webp',
-    options: [{ id: 'a', name: '强制重启', desc: '本轮时间 ×0.96，返还率 −1%' }, { id: 'b', name: '提取结构', desc: '本轮战力 ×1.02' }],
+    options: [{ id: 'a', name: '强制重启', desc: '本轮时间 ×0.85，返还率 −3%' }, { id: 'b', name: '提取结构', desc: '本轮战力 ×1.08' }],
   },
   mirrorUniverse: {
     name: '镜像宇宙', desc: '舰队短暂接触到一个资源分布相反的镜像世界。', image: 'events/mirror-universe.webp',
-    options: [{ id: 'a', name: '复制物质', desc: '本次远征货币 ×1.30，cube ×0.95' }, { id: 'b', name: '复制cube', desc: '本次cube ×1.05，远征货币 ×0.90' }],
+    options: [{ id: 'a', name: '复制物质', desc: '本次远征货币 ×1.65，cube ×0.85' }, { id: 'b', name: '复制cube', desc: '本次cube ×1.15，远征货币 ×0.80' }],
   },
 }
 

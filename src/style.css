@@ -1510,7 +1510,7 @@ body {
   z-index: 1;
   flex-shrink: 0;
   display: grid;
-  grid-template-columns: auto auto;
+  grid-template-columns: auto 1fr;
   align-items: center;
   justify-items: end;
   gap: 3px 8px;
@@ -1539,17 +1539,25 @@ body {
 .level-up-area button {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  padding: 7px 10px;
-  border: 1px solid #d6b916;
-  border-radius: 9px;
-  background: linear-gradient(135deg, #f5d61c, #c79c0c);
-  color: #211e0c;
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid #f0cf38;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ffe66b, #e5b923);
+  color: #302603;
   font-family: inherit;
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 5px 14px rgba(199, 156, 12, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 5px 13px rgba(229, 185, 35, 0.22);
+  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+
+.level-up-area button:not(:disabled):active {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 2px 7px rgba(229, 185, 35, 0.2);
 }
 
 .level-up-area button:disabled {
@@ -1560,18 +1568,21 @@ body {
   cursor: not-allowed;
 }
 
+.level-up-actions {
+  display: flex;
+  grid-column: 2;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .level-up-area .max-level-up-btn {
-  grid-column: 1 / -1;
   width: auto;
-  justify-self: end;
-  justify-content: center;
-  margin-top: 3px;
-  padding: 6px 9px;
-  font-size: 11px;
-  border-color: rgba(167, 139, 250, 0.55);
-  background: linear-gradient(135deg, #6d28d9, #4338ca);
-  color: #f5f3ff;
-  box-shadow: 0 5px 14px rgba(109, 40, 217, 0.22);
+  margin-top: 0;
+  padding: 7px 10px;
+  border-color: rgba(178, 151, 255, 0.64);
+  background: rgba(103, 79, 176, 0.2);
+  color: #e9e2ff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .level-up-area .max-level-up-btn:disabled {
@@ -1840,10 +1851,12 @@ body {
   .player-level-copy > span { max-width: 88px; }
   .player-level-copy strong { font-size: 20px; }
   .level-up-area {
-    grid-template-columns: auto auto;
+    grid-template-columns: auto 1fr;
     gap: 2px 5px;
   }
-  .level-up-area .max-level-up-btn { margin-top: 1px; padding: 5px 8px; }
+  .level-up-actions { gap: 4px; }
+  .level-up-area button { min-height: 32px; padding: 6px 8px; font-size: 11px; }
+  .level-up-area .max-level-up-btn { margin-top: 0; padding: 6px 7px; }
 }
 
 .max-level-modal {

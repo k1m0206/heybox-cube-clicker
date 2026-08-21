@@ -2041,13 +2041,15 @@ function formatNumber(n: number) {
           <div class="level-up-area">
             <span>升至 Lv.{{ playerLevel + 1 }}</span>
             <strong><img :src="clickEmoji.src" alt="" /> {{ formatNumber(nextLevelCost) }}</strong>
-            <button :disabled="!canLevelUp" @click="levelUp">
-              <ArrowUpCircle :size="16" />
-              {{ levelUpLoading ? '同步中…' : '升级' }}
-            </button>
-            <button class="max-level-up-btn" :disabled="!canMaxLevelUp" @click="openMaxLevelConfirm">
-              <TrendingUp :size="15" />一键升级
-            </button>
+            <div class="level-up-actions">
+              <button :disabled="!canLevelUp" @click="levelUp">
+                <ArrowUpCircle :size="16" />
+                {{ levelUpLoading ? '同步中…' : '升级' }}
+              </button>
+              <button class="max-level-up-btn" :disabled="!canMaxLevelUp" @click="openMaxLevelConfirm">
+                <TrendingUp :size="15" />一键升级
+              </button>
+            </div>
           </div>
         </section>
 
