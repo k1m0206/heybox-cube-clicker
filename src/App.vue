@@ -1,11 +1,23 @@
 <script setup lang="ts">
-import hbSDK, { HbMiniProgramSDKError, type LeaderboardEntry, type MiniProgramUserInfo } from '@heybox/hb-sdk'
+import hbSDK, { HbMiniProgramSDKError, type LeaderboardEntry, type MiniProgramUserInfoResult } from '@heybox/hb-sdk'
 import { ref, computed, onMounted, onUnmounted, type Component } from 'vue'
 import { cubeEmojis } from './data/emojis'
 import {
   CLICK_COMBO_WINDOW_MS, advanceClickCombo, calculateManualClickGain, rollGoldenLuckBonus,
 } from './click-engine'
 import ExpeditionPage from './components/expedition/ExpeditionPage.vue'
+import ChestSystem from './components/chest/ChestSystem.vue'
+import { buyChestUpgrade, createDefaultChestSave, getChestCapacity, getNextChestSeconds, normalizeChestSave, openChest, refreshChestState } from './chest/engine'
+import type { ChestReward, ChestSave, ChestUpgradeId } from './chest/types'
+import { choosePreferredSave } from './save-selection'
+import { createWriteBehind } from './storage/write-behind'
+import { getPlayerDisplayName, isIdentityRevoked, toPlayerIdentity, type PlayerIdentity } from './user/identity'
+import { formatErrorDiagnostic } from './diagnostics/error-diagnostics'
+import packageMetadata from '../package.json'
+import {
+  getEntryAvatar, getEntryLevel, getEntryName, LEVEL_LEADERBOARD_KEY,
+  LEVEL_LEADERBOARD_LIMIT, loadLevelRanking, mergeCurrentEntryIntoRanking, syncLevel,
+} from './leaderboard/level-leaderboard'
 import {
   BLUEPRINT_REASSIGN_COST, GALAXY_BUILDING_INDEX, RELICS, TEMP_UPGRADES,
 } from './expedition/config'
@@ -28,14 +40,35 @@ import {
 type TabId = 'click' | 'shop' | 'rebirth' | 'expedition' | 'leaderboard'
 const activeTab = ref<TabId>('click')
 
+interface UserInfoSnapshot {
+  handshakeStatus: 'sdk_managed' | 'failed'
+  identityStatus: 'waiting_host' | 'loading' | 'ready' | 'logged_out' | 'unavailable' | 'error'
+  isHeyboxAppLoggedIn: boolean
+  appUserId: string
+  nickname: string
+  avatar: string
+  identityAuthorization: string
+  profileAuthorization: string
+  attempts: number
+  errorCode: string
+  errorMessage: string
+  updatedAt: string
+}
+
 // ============ 时空远征 ============
 const expedition = ref<ExpeditionSave>(createDefaultExpeditionSave(Date.now()))
 const expeditionClockWarning = ref('')
 const expeditionNow = ref(Date.now())
 
+// ============ 悬浮宝箱 ============
+const chest = ref<ChestSave>(createDefaultChestSave(Date.now()))
+const chestNow = ref(Date.now())
+const chestOpeningKey = ref(0)
+const chestLastReward = ref<{ kind: ChestReward['kind']; title: string; detail: string; bonus?: string } | null>(null)
+const chestCapacity = computed(() => getChestCapacity(chest.value))
+const nextChestSeconds = computed(() => getNextChestSeconds(chest.value, chestNow.value))
+
 // ============ 等级排行榜 ============
-const LEVEL_LEADERBOARD_KEY = 'cube_clicker_level'
-const LEVEL_LEADERBOARD_LIMIT = 100
 const VISITOR_LEADERBOARD_KEY = 'cube_clicker_visitors'
 const VISITOR_LEADERBOARD_PAGE_SIZE = 100
 const VISITOR_STATS_UNLOCK_TAPS = 10
@@ -52,12 +85,20 @@ const GAME_ICON_URL = new URL(
 ).href
 
 const playerLevel = ref(1)
-const currentUser = ref<MiniProgramUserInfo | null>(null)
+const currentUser = ref<PlayerIdentity | null>(null)
 const sdkConnected = ref(false)
-const authLoading = ref(false)
 const levelUpLoading = ref(false)
 const leaderboardLoading = ref(false)
 const leaderboardEntries = ref<LeaderboardEntry[]>([])
+const currentLeaderboardEntry = ref<LeaderboardEntry | undefined>()
+const leaderboardSubmitError = ref('')
+const diagnosticLogs = ref<string[]>([])
+const userInfoSnapshot = ref<UserInfoSnapshot>({
+  handshakeStatus: 'sdk_managed', identityStatus: 'waiting_host',
+  isHeyboxAppLoggedIn: false, appUserId: '', nickname: '', avatar: '',
+  identityAuthorization: 'unknown', profileAuthorization: 'unknown',
+  attempts: 0, errorCode: '', errorMessage: '', updatedAt: '',
+})
 const leaderboardMessage = ref('')
 const leaderboardHasError = ref(false)
 const visitorStatsUnlocked = ref(false)
@@ -66,9 +107,70 @@ const visitorStatsToday = ref(0)
 const visitorStatsTotal = ref(0)
 const visitorStatsMessage = ref('')
 const safeAreaTop = ref(0)
-let stopAuthListener: (() => void) | undefined
+let stopAppLoginListener: (() => void) | undefined
+let stopAuthorizationListener: (() => void) | undefined
 let visitorAvatarTapCount = 0
 let visitorTrackedDate = 0
+const identityRestoreLoading = ref(false)
+
+const identityStatusLabel = computed(() => ({
+  waiting_host: '等待小黑盒宿主',
+  loading: '正在获取',
+  ready: '已获取',
+  logged_out: '小黑盒未登录',
+  unavailable: '已登录，但身份暂不可用',
+  error: '获取失败',
+})[userInfoSnapshot.value.identityStatus])
+const heyboxLoginStatusLabel = computed(() => {
+  if (userInfoSnapshot.value.identityStatus === 'waiting_host' || userInfoSnapshot.value.identityStatus === 'loading') {
+    return '检测中'
+  }
+  if (userInfoSnapshot.value.identityStatus === 'error') return '未知'
+  return userInfoSnapshot.value.isHeyboxAppLoggedIn ? '已登录' : '未登录'
+})
+const currentPlayerName = computed(() => {
+  if (currentUser.value) return getPlayerDisplayName(currentUser.value)
+  return ({
+    waiting_host: '正在连接小黑盒',
+    loading: '正在获取身份',
+    ready: '未知玩家',
+    logged_out: '未登录玩家',
+    unavailable: '身份暂不可用',
+    error: '身份获取失败',
+  })[userInfoSnapshot.value.identityStatus]
+})
+
+function recordErrorDiagnostic(stage: string, error: unknown, extra: Record<string, unknown> = {}) {
+  const diagnostic = formatErrorDiagnostic(stage, error, {
+    miniProgramId: packageMetadata.heybox.miniProgramId,
+    appVersion: packageMetadata.version,
+    sdkVersion: packageMetadata.dependencies['@heybox/hb-sdk'],
+    userAgent: navigator.userAgent,
+    online: navigator.onLine,
+    visibilityState: document.visibilityState,
+    sdkConnected: sdkConnected.value,
+    handshakeStatus: userInfoSnapshot.value.handshakeStatus,
+    identityStatus: userInfoSnapshot.value.identityStatus,
+    isHeyboxAppLoggedIn: userInfoSnapshot.value.isHeyboxAppLoggedIn,
+    identityAttempt: userInfoSnapshot.value.attempts,
+    ...extra,
+  })
+  diagnosticLogs.value = [diagnostic, ...diagnosticLogs.value].slice(0, 12)
+  console.error(`[cube-clicker][diagnostic] ${stage}\n${diagnostic}`)
+  return diagnostic
+}
+
+function handleGlobalRuntimeError(event: ErrorEvent) {
+  recordErrorDiagnostic('window.error', event.error ?? new Error(event.message), {
+    filename: event.filename,
+    line: event.lineno,
+    column: event.colno,
+  })
+}
+
+function handleUnhandledRejection(event: PromiseRejectionEvent) {
+  recordErrorDiagnostic('window.unhandledrejection', event.reason)
+}
 
 const nextLevelCost = computed(() => {
   const cost = getPlayerLevelCost(playerLevel.value)
@@ -849,6 +951,67 @@ function updateExpeditionUnlockProgress() {
   }
 }
 
+function refreshChestRuntime(now = Date.now()) {
+  chestNow.value = now
+  chest.value = refreshChestState(chest.value, now)
+}
+
+function formatChestDuration(seconds: number) {
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} 分钟产能`
+  return `${seconds / 3600} 小时产能`
+}
+
+function openFloatingChest() {
+  const now = Date.now()
+  refreshChestRuntime(now)
+  const result = openChest(chest.value, worldAutoRate.value, Math.random, now)
+  if (!result.reward) return
+  chest.value = result.state
+  if (result.cubeGain > 0) {
+    cubeCount.value += result.cubeGain
+    totalCubesEver.value += result.cubeGain
+  }
+  if (result.heritageGain > 0) {
+    heritagePoints.value += result.heritageGain
+    heritageMultiplier.value = 1 + heritagePoints.value * 0.1
+  }
+  if (result.chronoCoreGain > 0) {
+    expedition.value = { ...expedition.value, chronoCores: expedition.value.chronoCores + result.chronoCoreGain }
+  }
+
+  const reward = result.reward
+  const bonusParts: string[] = []
+  if (reward.upgradedTier) bonusParts.push('时间跃迁生效')
+  if (reward.doubled) bonusParts.push('双倍结算生效')
+  if (reward.refundedChest) bonusParts.push('返还 1 个宝箱')
+  if (reward.bonusChestPoints) bonusParts.push(`额外 +${reward.bonusChestPoints} 宝箱点`)
+  if (reward.kind === 'production') {
+    chestLastReward.value = {
+      kind: reward.kind,
+      title: formatChestDuration(reward.durationSeconds ?? 0),
+      detail: `立即获得 ${formatNumber(result.cubeGain)} cube`,
+      bonus: bonusParts.join(' · ') || undefined,
+    }
+  } else if (reward.kind === 'chestPoints') {
+    chestLastReward.value = { kind: reward.kind, title: `宝箱点数 +${reward.amount}`, detail: '可用于永久升级宝箱' }
+  } else if (reward.kind === 'heritage') {
+    chestLastReward.value = { kind: reward.kind, title: `转生点数 +${reward.amount}`, detail: '已加入遗产点数' }
+  } else {
+    chestLastReward.value = { kind: reward.kind, title: '时空核心 +1', detail: '已加入远征资源' }
+  }
+  chestOpeningKey.value += 1
+  saveGame()
+}
+
+function upgradeChest(id: ChestUpgradeId) {
+  const now = Date.now()
+  refreshChestRuntime(now)
+  const next = buyChestUpgrade(chest.value, id)
+  if (next === chest.value) return
+  chest.value = next
+  saveGame()
+}
+
 function refreshExpeditionRuntime(now = Date.now()) {
   expeditionNow.value = now
   const refreshed = refreshExpeditionTime(expedition.value, now)
@@ -1017,6 +1180,7 @@ async function trackDailyVisitor(throwOnError = false) {
   } catch (error) {
     if (throwOnError) throw error
     // 隐藏统计榜不可用时不影响正常游戏和公开等级榜。
+    recordErrorDiagnostic('leaderboard.visitor.submit', error, { leaderboardKey: VISITOR_LEADERBOARD_KEY })
     console.warn('[cube-clicker] trackDailyVisitor failed', error)
   }
 }
@@ -1040,14 +1204,14 @@ async function loadVisitorStats() {
     return
   }
   if (!sdkConnected.value || !currentUser.value) {
-    visitorStatsMessage.value = '登录小黑盒后可查看访问统计。'
+    visitorStatsMessage.value = '获取到当前用户身份后才能读取访问统计。'
     return
   }
 
   visitorStatsLoading.value = true
   visitorStatsMessage.value = ''
   try {
-    await trackDailyVisitor(true)
+    if (currentUser.value) await trackDailyVisitor(true)
     const today = getVisitorDayScore()
     let todayCount = 0
     let totalCount = 0
@@ -1074,6 +1238,7 @@ async function loadVisitorStats() {
     visitorStatsToday.value = todayCount
     visitorStatsTotal.value = totalCount
   } catch (error) {
+    recordErrorDiagnostic('leaderboard.visitor.getList', error, { leaderboardKey: VISITOR_LEADERBOARD_KEY })
     console.error('[cube-clicker] loadVisitorStats failed', error)
     visitorStatsMessage.value = '访问统计暂不可用，请稍后刷新。'
   } finally {
@@ -1085,7 +1250,7 @@ async function connectLeaderboard() {
   if (LOCAL_LEADERBOARD_PREVIEW) {
     sdkConnected.value = true
     currentUser.value = {
-      heybox_id: 'local_player',
+      appUserId: 'local_player',
       nickname: '本地玩家',
       avatar: '',
     }
@@ -1093,70 +1258,184 @@ async function connectLeaderboard() {
     return
   }
 
+  // 不在业务层监听握手；能力调用由 SDK 内部自动等待 Host bridge。
+  sdkConnected.value = true
+  userInfoSnapshot.value.handshakeStatus = 'sdk_managed'
+  leaderboardMessage.value = '正在获取当前用户…'
+  await restoreAuthorizedIdentity({ retryUnavailable: true })
+  if (currentUser.value) void retryRemoteStorageAccess(false)
+}
+
+async function refreshLeaderboardPage() {
+  if (!currentUser.value) {
+    await restoreAuthorizedIdentity({ retryUnavailable: true })
+  } else {
+    await loadLeaderboard()
+  }
+  if (visitorStatsUnlocked.value) await loadVisitorStats()
+}
+
+async function restoreAuthorizedIdentity(options: { force?: boolean; retryUnavailable?: boolean } = {}) {
+  if (
+    !sdkConnected.value
+    || (!options.force && currentUser.value)
+    || identityRestoreLoading.value
+    || LOCAL_LEADERBOARD_PREVIEW
+  ) return
+  identityRestoreLoading.value = true
+  userInfoSnapshot.value.identityStatus = 'loading'
+  userInfoSnapshot.value.errorCode = ''
+  userInfoSnapshot.value.errorMessage = ''
   try {
-    await hbSDK.ready()
-    sdkConnected.value = true
-    const userResult = await hbSDK.user.getInfo()
-    currentUser.value = userResult.isLogin ? userResult.userInfo : null
-    if (currentUser.value) {
-      await syncPlayerLevel()
-      await trackDailyVisitor()
+    const result = await getUserInfoWithRetry(options.retryUnavailable === true)
+    updateUserInfoSnapshot(result)
+    if (!result.isHeyboxAppLoggedIn) {
+      currentUser.value = null
+      currentLeaderboardEntry.value = undefined
+      leaderboardMessage.value = '请先登录小黑盒，登录后将自动参与排行。'
+      return
     }
+    if (!result.userInfo) {
+      recordErrorDiagnostic('user.getInfo.empty_identity', new Error('Host returned userInfo: null for a logged-in user'), {
+        result: {
+          isHeyboxAppLoggedIn: result.isHeyboxAppLoggedIn,
+          identityPermission: result.authorization.identity,
+          profilePermission: result.authorization.profile,
+        },
+      })
+      currentUser.value = null
+      currentLeaderboardEntry.value = undefined
+      leaderboardMessage.value = '已登录小黑盒，但宿主未返回 app_user_id，请点击重试或重新打开小程序。'
+      return
+    }
+    currentUser.value = toPlayerIdentity(result)
+    if (!currentUser.value) {
+      currentLeaderboardEntry.value = undefined
+      leaderboardMessage.value = '宿主返回的 app_user_id 为空，无法关联排行榜身份。'
+      return
+    }
+    await trackDailyVisitor()
+    // loadLeaderboard 内会同步一次当前等级，避免恢复身份时重复提交。
     await loadLeaderboard()
   } catch (error) {
-    console.error('[cube-clicker] connectLeaderboard failed', error)
-    sdkConnected.value = false
+    recordErrorDiagnostic('user.getInfo.restore', error)
+    console.warn('[cube-clicker] restoreAuthorizedIdentity failed', error)
+    updateUserInfoErrorSnapshot(error)
+    currentUser.value = null
+    currentLeaderboardEntry.value = undefined
     leaderboardHasError.value = true
-    leaderboardMessage.value = '当前不在小黑盒运行环境中，排行榜暂不可用。'
+    leaderboardMessage.value = getUserInfoErrorMessage(error)
+  } finally {
+    identityRestoreLoading.value = false
   }
 }
 
-async function loginToLeaderboard() {
-  if (authLoading.value) return
-  authLoading.value = true
+async function getUserInfoWithRetry(retryUnavailable: boolean) {
+  const maxAttempts = retryUnavailable ? 3 : 1
+  let lastResult: MiniProgramUserInfoResult | undefined
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    userInfoSnapshot.value.attempts = attempt
+    try {
+      lastResult = await hbSDK.user.getInfo()
+      if (!lastResult.isHeyboxAppLoggedIn || lastResult.userInfo || attempt === maxAttempts) return lastResult
+    } catch (error) {
+      recordErrorDiagnostic(`user.getInfo.attempt_${attempt}`, error, { maxAttempts })
+      if (!isRetryableUserInfoError(error) || attempt === maxAttempts) throw error
+    }
+    await waitForIdentityRetry(attempt * 400)
+  }
+
+  // 循环总会在最后一次返回或抛错，这里只是类型防御。
+  if (lastResult) return lastResult
+  throw new Error('用户信息获取未返回结果')
+}
+
+function isRetryableUserInfoError(error: unknown) {
+  return error instanceof HbMiniProgramSDKError
+    && ['REQUEST_TIMEOUT', 'RUNTIME_ERROR', 'INVALID_STATE'].includes(error.code)
+}
+
+function waitForIdentityRetry(delay: number) {
+  return new Promise<void>(resolve => window.setTimeout(resolve, delay))
+}
+
+function updateUserInfoSnapshot(result: MiniProgramUserInfoResult) {
+  userInfoSnapshot.value = {
+    handshakeStatus: 'sdk_managed',
+    identityStatus: !result.isHeyboxAppLoggedIn ? 'logged_out' : result.userInfo ? 'ready' : 'unavailable',
+    isHeyboxAppLoggedIn: result.isHeyboxAppLoggedIn,
+    appUserId: result.userInfo?.app_user_id ?? '',
+    nickname: result.userInfo?.profile?.nickname ?? '',
+    avatar: result.userInfo?.profile?.avatar ?? '',
+    identityAuthorization: result.authorization?.identity ?? 'not_available',
+    profileAuthorization: result.authorization?.profile ?? 'not_available',
+    attempts: userInfoSnapshot.value.attempts,
+    errorCode: '',
+    errorMessage: '',
+    updatedAt: formatIdentityTimestamp(),
+  }
+}
+
+function updateUserInfoErrorSnapshot(error: unknown) {
+  userInfoSnapshot.value.identityStatus = 'error'
+  userInfoSnapshot.value.errorCode = error instanceof HbMiniProgramSDKError ? error.code : 'UNKNOWN'
+  userInfoSnapshot.value.errorMessage = error instanceof Error ? error.message : String(error)
+  userInfoSnapshot.value.updatedAt = formatIdentityTimestamp()
+}
+
+function formatIdentityTimestamp() {
+  return new Date().toLocaleString('zh-CN', { hour12: false })
+}
+
+async function retryIdentity() {
   leaderboardMessage.value = ''
   leaderboardHasError.value = false
+  currentUser.value = null
+  currentLeaderboardEntry.value = undefined
+  await restoreAuthorizedIdentity({ force: true, retryUnavailable: true })
+}
 
-  try {
-    await hbSDK.ready()
-    const result = await hbSDK.auth.login()
-    currentUser.value = result.isLogin ? result.userInfo : null
-    if (!currentUser.value) {
-      leaderboardMessage.value = '登录未完成，请稍后重试。'
-      return
-    }
-    sdkConnected.value = true
-    await syncPlayerLevel()
-    await trackDailyVisitor()
-    await loadLeaderboard()
-  } catch (error) {
-    console.error('[cube-clicker] loginToLeaderboard failed', error)
-    leaderboardHasError.value = true
-    leaderboardMessage.value = '登录失败，请稍后重试。'
-  } finally {
-    authLoading.value = false
+function getUserInfoErrorMessage(error: unknown) {
+  if (!(error instanceof HbMiniProgramSDKError)) return '用户信息获取失败，请稍后重试。（UNKNOWN）'
+  const messages: Record<string, string> = {
+    SERVER_API_REQUIRED: '当前应用网络权限配置与用户信息接口不匹配，请联系开发者。',
+    PERMISSION_DENIED: '用户信息能力尚未开放，请联系开发者检查运行时权限。',
+    METHOD_NOT_FOUND: '当前小黑盒版本暂不支持自动获取用户信息，请升级小黑盒后重试。',
+    CAPABILITY_NOT_SUPPORTED: '当前小黑盒版本暂不支持自动获取用户信息，请升级小黑盒后重试。',
+    INVALID_STATE: '小程序身份环境异常，请关闭并重新打开小程序后重试。',
+    RUNTIME_UNAVAILABLE: '小程序运行环境已断开，请重新打开后重试。',
+    REQUEST_TIMEOUT: '用户信息获取超时，请稍后重试。',
+    RUNTIME_ERROR: '小黑盒运行环境获取用户信息失败，请升级小黑盒或重新打开后重试。',
   }
+  return `${messages[error.code] ?? (error.message || '用户信息获取失败，请稍后重试。')}（${error.code}）`
 }
 
 async function syncPlayerLevel() {
   if (!sdkConnected.value || !currentUser.value || LOCAL_LEADERBOARD_PREVIEW) return
 
   try {
-    const currentEntry = await hbSDK.cloud.leaderboard.getCurrentUserEntry({
-      key: LEVEL_LEADERBOARD_KEY,
-    })
-    const cloudLevel = currentEntry ? leaderboardEntryLevel(currentEntry) : 0
-    if (cloudLevel > playerLevel.value) {
-      playerLevel.value = cloudLevel
+    const result = await syncLevel(hbSDK.cloud.leaderboard, currentUser.value, playerLevel.value)
+    currentLeaderboardEntry.value = result.entry
+    restorePlayerProfile(result.entry)
+    if (result.level > playerLevel.value) {
+      playerLevel.value = result.level
       saveGame()
-    }
-    if (!currentEntry || cloudLevel < playerLevel.value) {
-      await submitPlayerLevel()
     }
   } catch (error) {
     // 榜单尚未创建或临时不可用时不影响本地游戏和等级。
+    recordErrorDiagnostic('leaderboard.level.sync', error, { leaderboardKey: LEVEL_LEADERBOARD_KEY, playerLevel: playerLevel.value })
     console.warn('[cube-clicker] syncPlayerLevel failed', error)
+    showLeaderboardSubmitError(error)
   }
+}
+
+function restorePlayerProfile(entry: LeaderboardEntry | undefined) {
+  if (!currentUser.value || !entry) return
+  const nickname = entry.extra.nickname
+  const avatar = entry.extra.avatar
+  if (typeof nickname === 'string' && nickname.trim()) currentUser.value.nickname = nickname.trim()
+  if (typeof avatar === 'string') currentUser.value.avatar = avatar
 }
 
 async function applyLevelUpgrade(levels: number, cost: number) {
@@ -1189,7 +1468,7 @@ async function applyLevelUpgrade(levels: number, cost: number) {
     await submitPlayerLevel()
     await loadLeaderboard(true)
   } catch (error) {
-    // 升级后的榜单同步在后台静默失败，不打扰升级主流程。
+    // 不回滚已完成的本地升级，同时保留弹框错误便于反馈。
     console.warn('[cube-clicker] level-up leaderboard sync failed', error)
   } finally {
     levelUpLoading.value = false
@@ -1224,7 +1503,7 @@ async function confirmMaxLevelUp() {
 async function submitPlayerLevel() {
   if (!currentUser.value) return
   try {
-    await hbSDK.cloud.leaderboard.submit({
+    currentLeaderboardEntry.value = await hbSDK.cloud.leaderboard.submit({
       key: LEVEL_LEADERBOARD_KEY,
       score: playerLevel.value,
       extra: {
@@ -1234,9 +1513,18 @@ async function submitPlayerLevel() {
       },
     })
   } catch (error) {
+    recordErrorDiagnostic('leaderboard.level.submit', error, { leaderboardKey: LEVEL_LEADERBOARD_KEY, playerLevel: playerLevel.value })
     console.error('[cube-clicker] submitPlayerLevel failed', error)
+    showLeaderboardSubmitError(error)
     throw error
   }
+}
+
+function showLeaderboardSubmitError(error: unknown) {
+  const detail = error instanceof HbMiniProgramSDKError
+    ? `${error.message || '排行榜服务拒绝了本次提交。'}（${error.code}）`
+    : error instanceof Error ? error.message : '未知错误'
+  leaderboardSubmitError.value = `排行榜同步失败：${detail}`
 }
 
 function getLeaderboardErrorMessage(error: unknown) {
@@ -1279,20 +1567,27 @@ async function loadLeaderboard(silent = false) {
     return
   }
   if (!sdkConnected.value) return
+  if (!currentUser.value) {
+    leaderboardEntries.value = []
+    currentLeaderboardEntry.value = undefined
+    if (!silent && !leaderboardMessage.value) {
+      leaderboardMessage.value = '获取到 app_user_id 后才能读取排行榜。'
+    }
+    return
+  }
 
   leaderboardLoading.value = true
   leaderboardMessage.value = ''
   leaderboardHasError.value = false
   try {
-    if (currentUser.value) await syncPlayerLevel()
-    const result = await hbSDK.cloud.leaderboard.getList({
-      key: LEVEL_LEADERBOARD_KEY,
-      limit: LEVEL_LEADERBOARD_LIMIT,
-    })
-    leaderboardEntries.value = result.entries
+    await syncPlayerLevel()
+    const result = await loadLevelRanking(hbSDK.cloud.leaderboard)
+    leaderboardEntries.value = mergeCurrentEntryIntoRanking(result.entries, currentLeaderboardEntry.value)
   } catch (error) {
+    recordErrorDiagnostic('leaderboard.level.getList', error, { leaderboardKey: LEVEL_LEADERBOARD_KEY })
     console.error('[cube-clicker] leaderboard.getList failed', error)
     leaderboardEntries.value = []
+    currentLeaderboardEntry.value = undefined
     if (!silent) {
       leaderboardHasError.value = true
       leaderboardMessage.value = getLeaderboardErrorMessage(error)
@@ -1313,14 +1608,14 @@ function loadLocalLeaderboard() {
     { nickname: '刚来一小会', level: 3 },
   ]
   const localPlayer = {
-    nickname: currentUser.value?.nickname || '本地玩家',
+    nickname: currentUser.value ? getPlayerDisplayName(currentUser.value) : '本地玩家',
     level: playerLevel.value,
-    userId: currentUser.value?.heybox_id || 'local_player',
+    appUserId: currentUser.value?.appUserId || 'local_player',
   }
   const sorted = [
     ...previewPlayers.map((player, index) => ({
       ...player,
-      userId: `preview_player_${index + 1}`,
+      appUserId: `preview_player_${index + 1}`,
     })),
     localPlayer,
   ].sort((first, second) => second.level - first.level)
@@ -1328,7 +1623,7 @@ function loadLocalLeaderboard() {
   leaderboardEntries.value = sorted.map((player, index) => ({
     rank: index + 1,
     ranked: true,
-    userId: player.userId,
+    appUserId: player.appUserId,
     score: player.level,
     extra: {
       level: player.level,
@@ -1342,22 +1637,19 @@ function loadLocalLeaderboard() {
 }
 
 function leaderboardEntryLevel(entry: LeaderboardEntry) {
-  const level = Number(entry.extra.level ?? entry.score)
-  return Number.isFinite(level) && level >= 1 ? Math.floor(level) : 1
+  return getEntryLevel(entry)
 }
 
 function leaderboardEntryName(entry: LeaderboardEntry) {
-  const nickname = entry.extra.nickname
-  return typeof nickname === 'string' && nickname.trim() ? nickname.trim() : '神秘盒友'
+  return getEntryName(entry)
 }
 
 function leaderboardEntryAvatar(entry: LeaderboardEntry) {
-  const avatar = entry.extra.avatar
-  return typeof avatar === 'string' ? avatar : ''
+  return getEntryAvatar(entry)
 }
 
 function isCurrentLeaderboardUser(entry: LeaderboardEntry) {
-  return Boolean(currentUser.value && entry.userId === currentUser.value.heybox_id)
+  return Boolean(currentUser.value && entry.appUserId === currentUser.value.appUserId)
 }
 
 function hideBrokenAvatar(event: Event) {
@@ -1388,11 +1680,18 @@ interface GameSave {
   synergyUpgrades?: Array<{ id: string; bought: boolean }>
   rebirthUpgrades?: Array<{ id: string; level: number }>
   expedition?: ExpeditionSave
+  chest?: ChestSave
 }
 
 let tickTimer: number | undefined
 let lastAutosaveAt = 0
-let storageWriteQueue: Promise<void> = Promise.resolve()
+let remoteStorageWritable = false
+const remoteSaveWriter = createWriteBehind<GameSave>(async snapshot => {
+  await hbSDK.storage.setStorage({ key: GAME_SAVE_KEY, data: snapshot })
+})
+const saveRecoveryBlocked = ref(false)
+const saveRecoveryLoading = ref(false)
+const saveRecoveryMessage = ref('')
 
 function readLocalGameSave(): GameSave | undefined {
   try {
@@ -1410,31 +1709,79 @@ async function readGameSave(): Promise<GameSave | undefined> {
   let remoteSave: GameSave | undefined
 
   try {
-    await hbSDK.ready()
     remoteSave = (await hbSDK.storage.getStorage<GameSave>({ key: GAME_SAVE_KEY })).data
-  } catch {
-    // 本地调试或旧版宿主没有隔离 Storage 时，继续使用 localStorage 兜底。
+    remoteStorageWritable = true
+  } catch (error) {
+    remoteStorageWritable = false
+    recordErrorDiagnostic('storage.getStorage.initial', error, { storageKey: GAME_SAVE_KEY, hasLocalSave: Boolean(localSave) })
+    console.warn('[cube-clicker] remote save read failed', error)
+    if (!localSave && !LOCAL_LEADERBOARD_PREVIEW) {
+      saveRecoveryBlocked.value = true
+      saveRecoveryMessage.value = '远端存档暂时读取失败，已停止自动保存以防覆盖旧进度。请点击重试。'
+    }
   }
 
-  if (!localSave) return remoteSave
-  if (!remoteSave) return localSave
-  const localTime = Number(localSave.lastSaveTime) || 0
-  const remoteTime = Number(remoteSave.lastSaveTime) || 0
-  return remoteTime >= localTime ? remoteSave : localSave
+  return choosePreferredSave(localSave, remoteSave)
+}
+
+async function retryRemoteStorageAccess(showErrors = true) {
+  if (remoteStorageWritable || saveRecoveryLoading.value || LOCAL_LEADERBOARD_PREVIEW) return
+  saveRecoveryLoading.value = true
+  try {
+    const remoteSave = (await hbSDK.storage.getStorage<GameSave>({ key: GAME_SAVE_KEY })).data
+    const localSave = readLocalGameSave()
+    remoteStorageWritable = true
+
+    const preferredSave = choosePreferredSave(localSave, remoteSave)
+    if (remoteSave && preferredSave === remoteSave) {
+      try {
+        localStorage.setItem(GAME_SAVE_KEY, JSON.stringify(remoteSave))
+      } catch {
+        // 重载后仍会优先读取已经恢复成功的远端存档。
+      }
+      saveRecoveryBlocked.value = false
+      saveRecoveryMessage.value = ''
+      try {
+        await hbSDK.navigation.reload()
+      } catch {
+        window.location.reload()
+      }
+      return
+    }
+
+    saveRecoveryBlocked.value = false
+    saveRecoveryMessage.value = ''
+    if (gameRuntimeReady) saveGame()
+  } catch (error) {
+    remoteStorageWritable = false
+    recordErrorDiagnostic('storage.getStorage.retry', error, { storageKey: GAME_SAVE_KEY })
+    console.warn('[cube-clicker] remote save recovery failed', error)
+    if (showErrors || saveRecoveryBlocked.value) {
+      saveRecoveryBlocked.value = true
+      saveRecoveryMessage.value = '旧存档仍无法读取，保护模式将继续阻止覆盖。请检查小黑盒状态后重试。'
+    }
+  } finally {
+    saveRecoveryLoading.value = false
+  }
 }
 
 function handleVisibilityChange() {
   if (document.visibilityState === 'hidden') {
     if (gameRuntimeReady) saveGame()
   } else if (gameRuntimeReady) {
-    refreshExpeditionRuntime(Date.now())
-    void trackDailyVisitor()
+    const now = Date.now()
+    refreshExpeditionRuntime(now)
+    refreshChestRuntime(now)
+    if (sdkConnected.value && !currentUser.value) {
+      void restoreAuthorizedIdentity({ retryUnavailable: true })
+    } else {
+      void trackDailyVisitor()
+    }
   }
 }
 
 async function syncSafeArea() {
   try {
-    await hbSDK.ready()
     const windowInfo = await hbSDK.viewport.getWindowInfo()
     safeAreaTop.value = Math.max(0, windowInfo.safeArea.top, windowInfo.statusBarHeight)
   } catch {
@@ -1469,6 +1816,7 @@ async function startGameRuntime() {
       })
       const legacyExpeditionUnlock = !data.expedition && rebirthCount.value > 0
       expedition.value = normalizeExpeditionSave(data.expedition, now, legacyExpeditionUnlock)
+      chest.value = normalizeChestSave(data.chest, now)
       updateExpeditionUnlockProgress()
       const activeMissionAtLoad = expedition.value.activeMission
       const offlineCps = effectiveAutoRate.value + effectiveClickPower.value * rebirthAutoClick.value
@@ -1508,6 +1856,7 @@ async function startGameRuntime() {
   tickTimer = window.setInterval(() => {
     const now = Date.now()
     refreshExpeditionRuntime(now)
+    refreshChestRuntime(now)
     // 自动点击（模拟真实点击，金色粒子）
     if (rebirthAutoClick.value > 0) {
       const multiplier = goldenActive.value ? activeGoldenMultiplier.value * (1 + rebirthGoldenAutoBonus.value) : 1
@@ -1540,20 +1889,47 @@ async function startGameRuntime() {
   }, 1000)
 
   document.addEventListener('visibilitychange', handleVisibilityChange)
-  stopAuthListener = hbSDK.on('authChange', (result) => {
-    currentUser.value = result.isLogin ? result.userInfo : null
-    if (currentUser.value) {
-      void syncPlayerLevel()
-        .then(() => trackDailyVisitor())
-        .then(() => loadLeaderboard())
+  stopAppLoginListener = hbSDK.on('heybox_app_login_change', ({ isHeyboxAppLoggedIn }) => {
+    if (isHeyboxAppLoggedIn) {
+      leaderboardMessage.value = ''
+      currentUser.value = null
+      visitorTrackedDate = 0
+      void restoreAuthorizedIdentity({ retryUnavailable: true })
     } else {
-      void loadLeaderboard()
+      leaderboardMessage.value = '请先登录小黑盒，登录后将自动参与排行。'
+      currentUser.value = null
+      currentLeaderboardEntry.value = undefined
+      visitorTrackedDate = 0
+      updateUserInfoSnapshot({ isHeyboxAppLoggedIn: false, authorization: null, userInfo: null })
     }
   })
-  void connectLeaderboard()
+  stopAuthorizationListener = hbSDK.on('user_info_authorization_change', (authorization) => {
+    if (authorization.identity === 'granted') {
+      // user.getInfo() 每次成功都会广播 granted；此处不能反向再调用 getInfo，否则会形成重复链路。
+      userInfoSnapshot.value.identityAuthorization = authorization.identity
+      userInfoSnapshot.value.profileAuthorization = authorization.profile
+      userInfoSnapshot.value.updatedAt = formatIdentityTimestamp()
+      return
+    }
+    if (!isIdentityRevoked(authorization.identity)) return
+    currentUser.value = null
+    currentLeaderboardEntry.value = undefined
+    visitorTrackedDate = 0
+    userInfoSnapshot.value.identityStatus = 'unavailable'
+    userInfoSnapshot.value.appUserId = ''
+    userInfoSnapshot.value.nickname = ''
+    userInfoSnapshot.value.avatar = ''
+    userInfoSnapshot.value.identityAuthorization = authorization.identity
+    userInfoSnapshot.value.profileAuthorization = authorization.profile
+    userInfoSnapshot.value.updatedAt = formatIdentityTimestamp()
+    leaderboardMessage.value = '用户身份已重置，请重新打开小程序以恢复排行。'
+  })
 }
 
 onMounted(() => {
+  window.addEventListener('error', handleGlobalRuntimeError)
+  window.addEventListener('unhandledrejection', handleUnhandledRejection)
+  void connectLeaderboard()
   void syncSafeArea()
   void startGameRuntime()
 })
@@ -1565,7 +1941,10 @@ onUnmounted(() => {
   if (balanceBumpTimer !== undefined) window.clearTimeout(balanceBumpTimer)
   resetClickCombo()
   cubePressAnimation?.cancel()
-  stopAuthListener?.()
+  stopAppLoginListener?.()
+  stopAuthorizationListener?.()
+  window.removeEventListener('error', handleGlobalRuntimeError)
+  window.removeEventListener('unhandledrejection', handleUnhandledRejection)
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   if (gameRuntimeReady) saveGame()
   gameRuntimeStarted = false
@@ -1573,8 +1952,9 @@ onUnmounted(() => {
 })
 
 function saveGame() {
+  if (saveRecoveryBlocked.value) return
   const snapshot: GameSave = {
-    saveVersion: 3,
+    saveVersion: 4,
     cubeCount: cubeCount.value, clickPower: clickPower.value,
     totalCubesEver: totalCubesEver.value, totalClicks: totalClicks.value,
     rebirthCount: rebirthCount.value, heritagePoints: heritagePoints.value,
@@ -1585,6 +1965,7 @@ function saveGame() {
     synergyUpgrades: synergyUpgrades.value.map(s => ({ id: s.id, bought: s.bought })),
     rebirthUpgrades: rebirthUpgrades.value.map(u => ({ id: u.id, level: u.level })),
     expedition: JSON.parse(JSON.stringify(expedition.value)) as ExpeditionSave,
+    chest: JSON.parse(JSON.stringify(chest.value)) as ChestSave,
     playerLevel: playerLevel.value,
     lastSaveTime: Date.now(), selectedSkinId: selectedSkinId.value,
   }
@@ -1595,10 +1976,13 @@ function saveGame() {
     // 宿主回收页面或隐私模式下 localStorage 不可用时，不能阻断游戏运行。
   }
 
-  storageWriteQueue = storageWriteQueue
-    .catch(() => undefined)
-    .then(() => hbSDK.storage.setStorage({ key: GAME_SAVE_KEY, data: snapshot }))
-    .catch(() => undefined)
+  if (!remoteStorageWritable) return
+
+  void remoteSaveWriter.enqueue(snapshot).catch((error) => {
+      remoteStorageWritable = false
+      recordErrorDiagnostic('storage.setStorage', error, { storageKey: GAME_SAVE_KEY, saveVersion: snapshot.saveVersion })
+      console.warn('[cube-clicker] remote save write failed; keeping local save', error)
+    })
 }
 
 function resetGame() {
@@ -1623,6 +2007,10 @@ function resetProgressState() {
   expedition.value = createDefaultExpeditionSave(Date.now())
   expeditionClockWarning.value = ''
   expeditionNow.value = Date.now()
+  chest.value = createDefaultChestSave(Date.now())
+  chestNow.value = Date.now()
+  chestLastReward.value = null
+  chestOpeningKey.value = 0
 
   buildings.value.forEach((building) => { building.count = 0 })
   clickUpgrades.value.forEach((upgrade) => {
@@ -1765,6 +2153,43 @@ function formatNumber(n: number) {
       <div v-if="goldenActive" class="golden-banner-layer">
         <div class="golden-banner">
           <Sparkles :size="16" /> 黄金时段 {{ activeGoldenMultiplier }}x · {{ goldenRemaining }}秒 <Sparkles :size="16" />
+        </div>
+      </div>
+    </Transition>
+
+    <ChestSystem
+      v-if="activeTab === 'click'"
+      :state="chest"
+      :capacity="chestCapacity"
+      :next-chest-seconds="nextChestSeconds"
+      :last-reward="chestLastReward"
+      :opening-key="chestOpeningKey"
+      @open-chest="openFloatingChest"
+      @buy-upgrade="upgradeChest"
+    />
+
+    <Transition name="golden-fade">
+      <div v-if="saveRecoveryBlocked" class="modal-overlay">
+        <div class="offline-modal" role="alertdialog" aria-modal="true" aria-labelledby="save-recovery-title">
+          <div class="offline-icon">🛡️</div>
+          <h3 id="save-recovery-title">存档保护已启动</h3>
+          <p class="offline-time">{{ saveRecoveryMessage }}</p>
+          <button class="offline-btn" :disabled="saveRecoveryLoading" @click="retryRemoteStorageAccess(true)">
+            {{ saveRecoveryLoading ? '正在恢复…' : '重试读取旧存档' }}
+          </button>
+        </div>
+      </div>
+    </Transition>
+
+    <Transition name="golden-fade">
+      <div v-if="leaderboardSubmitError" class="modal-overlay" @click.self="leaderboardSubmitError = ''">
+        <div class="reset-modal" role="alertdialog" aria-modal="true" aria-labelledby="leaderboard-submit-error-title">
+          <div class="reset-modal-icon">⚠️</div>
+          <h3 id="leaderboard-submit-error-title">排行榜同步失败</h3>
+          <p class="leaderboard-submit-error-detail">{{ leaderboardSubmitError }}</p>
+          <div class="reset-modal-btns">
+            <button class="reset-confirm-btn" @click="leaderboardSubmitError = ''">知道了</button>
+          </div>
         </div>
       </div>
     </Transition>
@@ -1988,6 +2413,38 @@ function formatNumber(n: number) {
         <div class="reset-section">
           <button class="reset-btn" @click="resetGame"><Trash2 :size="14" /> 重置所有进度</button>
         </div>
+
+        <section class="user-info-panel" aria-label="当前小程序用户信息">
+          <h3><UserRound :size="15" /> 当前用户信息</h3>
+          <p>仅展示 SDK 在当前小程序内允许读取的资料。</p>
+          <dl>
+            <dt>SDK 连接</dt><dd>{{ userInfoSnapshot.handshakeStatus === 'sdk_managed' ? '自动管理' : '失败' }}</dd>
+            <dt>身份状态</dt><dd>{{ identityStatusLabel }}</dd>
+            <dt>小黑盒登录</dt><dd>{{ heyboxLoginStatusLabel }}</dd>
+            <dt>app_user_id</dt><dd>{{ userInfoSnapshot.appUserId || '未获取' }}</dd>
+            <dt>昵称</dt><dd>{{ userInfoSnapshot.nickname || '未授权或未提供' }}</dd>
+            <dt>头像</dt><dd>{{ userInfoSnapshot.avatar || '未授权或未提供' }}</dd>
+            <dt>身份授权</dt><dd>{{ userInfoSnapshot.identityAuthorization }}</dd>
+            <dt>资料授权</dt><dd>{{ userInfoSnapshot.profileAuthorization }}</dd>
+            <dt>尝试次数</dt><dd>{{ userInfoSnapshot.attempts }}</dd>
+            <dt>错误代码</dt><dd>{{ userInfoSnapshot.errorCode || '无' }}</dd>
+            <dt>错误详情</dt><dd>{{ userInfoSnapshot.errorMessage || '无' }}</dd>
+            <dt>最后更新</dt><dd>{{ userInfoSnapshot.updatedAt || '尚未请求' }}</dd>
+          </dl>
+          <details class="diagnostic-log-panel" :open="diagnosticLogs.length > 0">
+            <summary>详细诊断日志（{{ diagnosticLogs.length }}）</summary>
+            <p>已自动隐藏 token、cookie、nonce 等敏感字段，长按下方文本可复制反馈。</p>
+            <pre>{{ diagnosticLogs.join('\n\n') || '暂无错误日志' }}</pre>
+          </details>
+          <button
+            class="identity-retry-btn"
+            :disabled="identityRestoreLoading || !sdkConnected"
+            @click="retryIdentity"
+          >
+            <RefreshCw :size="13" :class="{ spinning: identityRestoreLoading }" />
+            {{ identityRestoreLoading ? '正在获取…' : '重新获取用户信息' }}
+          </button>
+        </section>
       </div>
     </div>
 
@@ -2022,34 +2479,37 @@ function formatNumber(n: number) {
             <h2><Trophy :size="21" /> 等级排行榜</h2>
             <p>消耗 cube 提升等级，等级越高排名越靠前</p>
           </div>
-          <button class="leaderboard-refresh" :disabled="leaderboardLoading" @click="loadLeaderboard()" aria-label="刷新排行榜">
+          <button class="leaderboard-refresh" :disabled="leaderboardLoading" @click="refreshLeaderboardPage" aria-label="刷新排行榜">
             <RefreshCw :size="17" :class="{ spinning: leaderboardLoading }" />
           </button>
         </header>
 
         <section class="player-level-card">
-          <div class="player-profile">
-            <button class="player-avatar visitor-secret-trigger" aria-label="我的头像" @click="handleVisitorSecretTap">
-              <span>{{ currentUser?.nickname?.trim().charAt(0) || 'C' }}</span>
-              <img v-if="currentUser?.avatar" :src="currentUser.avatar" alt="" referrerpolicy="no-referrer" @error="hideBrokenAvatar" />
-            </button>
-            <div class="player-level-copy">
-              <span>{{ currentUser?.nickname || '游客玩家' }}</span>
-              <strong>Lv.{{ playerLevel }}</strong>
+          <div class="player-level-main">
+            <div class="player-profile">
+              <button class="player-avatar visitor-secret-trigger" aria-label="我的头像" @click="handleVisitorSecretTap">
+                <span>{{ currentPlayerName.charAt(0) || 'C' }}</span>
+                <img v-if="currentUser?.avatar" :src="currentUser.avatar" alt="" referrerpolicy="no-referrer" @error="hideBrokenAvatar" />
+              </button>
+              <div class="player-level-copy">
+                <span>{{ currentPlayerName }}</span>
+                <strong>Lv.{{ playerLevel }}</strong>
+              </div>
+            </div>
+            <div class="level-up-area">
+              <span>下一等级</span>
+              <b>Lv.{{ playerLevel + 1 }}</b>
+              <strong><img :src="clickEmoji.src" alt="" /> {{ formatNumber(nextLevelCost) }}</strong>
             </div>
           </div>
-          <div class="level-up-area">
-            <span>升至 Lv.{{ playerLevel + 1 }}</span>
-            <strong><img :src="clickEmoji.src" alt="" /> {{ formatNumber(nextLevelCost) }}</strong>
-            <div class="level-up-actions">
-              <button :disabled="!canLevelUp" @click="levelUp">
-                <ArrowUpCircle :size="16" />
-                {{ levelUpLoading ? '同步中…' : '升级' }}
-              </button>
-              <button class="max-level-up-btn" :disabled="!canMaxLevelUp" @click="openMaxLevelConfirm">
-                <TrendingUp :size="15" />一键升级
-              </button>
-            </div>
+          <div class="level-up-actions">
+            <button :disabled="!canLevelUp" @click="levelUp">
+              <ArrowUpCircle :size="17" />
+              {{ levelUpLoading ? '同步中…' : '升级' }}
+            </button>
+            <button class="max-level-up-btn" :disabled="!canMaxLevelUp" @click="openMaxLevelConfirm">
+              <TrendingUp :size="17" />一键升级
+            </button>
           </div>
         </section>
 
@@ -2076,23 +2536,27 @@ function formatNumber(n: number) {
             </div>
           </div>
           <p v-if="visitorStatsMessage" class="visitor-stats-message">{{ visitorStatsMessage }}</p>
-          <p v-else class="visitor-stats-note">按北京时间统计，每位登录用户每天只计 1 人</p>
+          <p v-else class="visitor-stats-note">按北京时间统计，每位已登录玩家每天只计 1 人</p>
         </section>
-
-        <button v-if="!currentUser && !LOCAL_LEADERBOARD_PREVIEW" class="leaderboard-login" :disabled="authLoading" @click="loginToLeaderboard">
-          <UserRound :size="16" /> {{ authLoading ? '登录中…' : '登录小黑盒参与排行' }}
-        </button>
 
         <p v-if="leaderboardMessage" class="level-board-message" :class="{ error: leaderboardHasError }">{{ leaderboardMessage }}</p>
 
         <section class="ranking-board">
+          <article
+            v-if="currentLeaderboardEntry && !leaderboardEntries.some(isCurrentLeaderboardUser)"
+            class="my-ranking-card"
+          >
+            <span>我的排名</span>
+            <strong>{{ currentLeaderboardEntry.ranked && currentLeaderboardEntry.rank > 0 ? `#${currentLeaderboardEntry.rank}` : '榜外' }}</strong>
+            <span>Lv.{{ leaderboardEntryLevel(currentLeaderboardEntry) }}</span>
+          </article>
           <div class="ranking-board-title">
             <span>排名</span><span>玩家</span><span>等级</span>
           </div>
           <div v-if="leaderboardEntries.length" class="level-ranking-list">
             <article
               v-for="(entry, index) in leaderboardEntries"
-              :key="entry.userId"
+              :key="entry.appUserId"
               class="level-ranking-row"
               :class="{ mine: isCurrentLeaderboardUser(entry), podium: index < 3 }"
             >

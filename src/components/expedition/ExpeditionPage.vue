@@ -138,7 +138,13 @@ const displayedMasteryZone = computed(() => mapMode.value === 'distortion' ? dis
 const displayedMasteryChallenges = computed(() => new Set(getZoneMasteryChallenges(props.state, displayedMasteryZone.value)))
 const displayedMasteryLevel = computed(() => getZoneMasteryLevel(props.state, displayedMasteryZone.value))
 
-function asset(path: string) { return `${EXPEDITION_ASSET_BASE}/${path}` }
+const ASSET_ALIASES: Record<string, string> = {
+  'resources/time-sand.webp': 'c/c1.webp',
+  'resources/stardust.webp': 'c/c2.webp',
+  'resources/chrono-core.webp': 'c/c3.webp',
+}
+
+function asset(path: string) { return `${EXPEDITION_ASSET_BASE}/${ASSET_ALIASES[path] ?? path}` }
 
 function timeLabel(seconds: number) {
   if (seconds < 60) return `${seconds}秒`

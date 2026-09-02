@@ -96,14 +96,14 @@ export const RELICS: Record<ExpeditionRelicId, {
   cost: number
   image: string
 }> = {
-  starChart: { name: '探路星盘', desc: '远征战力 +8%', cost: 8, image: 'relics/star-chart.webp' },
-  dustPrism: { name: '聚尘棱镜', desc: '远征货币收益 +15%', cost: 10, image: 'relics/dust-prism.webp' },
-  returnBeacon: { name: '回收信标', desc: 'cube返还率 +10%', cost: 10, image: 'relics/return-beacon.webp' },
-  dimensionCompass: { name: '维度罗盘', desc: '每种建筑额外 +5 战力，最多 +100', cost: 12, image: 'relics/dimension-compass.webp' },
-  safetyAnchor: { name: '安全锚', desc: '安全航线远征货币倍率提升至 ×0.85', cost: 12, image: 'relics/safety-anchor.webp' },
-  abyssContract: { name: '深渊契约', desc: '异常航线远征货币 +20%，返还率 -10%', cost: 14, image: 'relics/abyss-contract.webp' },
-  timeBottle: { name: '体力之瓶', desc: '远征体力上限 +30', cost: 14, image: 'relics/time-bottle.webp' },
-  cycleCore: { name: '循环核心', desc: '转生时保留 15% 远征货币', cost: 16, image: 'relics/cycle-core.webp' },
+  starChart: { name: '探路星盘', desc: '远征战力 +8%', cost: 8, image: 'r/r1.webp' },
+  dustPrism: { name: '聚尘棱镜', desc: '远征货币收益 +15%', cost: 10, image: 'r/r2.webp' },
+  returnBeacon: { name: '回收信标', desc: 'cube返还率 +10%', cost: 10, image: 'r/r3.webp' },
+  dimensionCompass: { name: '维度罗盘', desc: '每种建筑额外 +5 战力，最多 +100', cost: 12, image: 'r/r4.webp' },
+  safetyAnchor: { name: '安全锚', desc: '安全航线远征货币倍率提升至 ×0.85', cost: 12, image: 'r/r5.webp' },
+  abyssContract: { name: '深渊契约', desc: '异常航线远征货币 +20%，返还率 -10%', cost: 14, image: 'r/r6.webp' },
+  timeBottle: { name: '体力之瓶', desc: '远征体力上限 +30', cost: 14, image: 'r/r7.webp' },
+  cycleCore: { name: '循环核心', desc: '转生时保留 15% 远征货币', cost: 16, image: 'r/r8.webp' },
 }
 
 export const RELIC_IDS = Object.keys(RELICS) as ExpeditionRelicId[]
@@ -132,35 +132,35 @@ export const EXPEDITION_EVENTS: Record<ExpeditionEventId, {
   options: [ExpeditionEventOptionConfig, ExpeditionEventOptionConfig]
 }> = {
   lostCargo: {
-    name: '遗失货舱', desc: '一组封存货舱漂浮在破碎航道中央。', image: 'events/lost-cargo.webp',
+    name: '遗失货舱', desc: '一组封存货舱漂浮在破碎航道中央。', image: 'e/e1.webp',
     options: [{ id: 'a', name: '回收货舱', desc: '本次远征货币 ×1.60' }, { id: 'b', name: '拆解修复', desc: '本次cube奖励 ×1.18' }],
   },
   timeWhirlpool: {
-    name: '时间涡流', desc: '失控的时间流在舰队周围形成闭环。', image: 'events/time-whirlpool.webp',
+    name: '时间涡流', desc: '失控的时间流在舰队周围形成闭环。', image: 'e/e2.webp',
     options: [{ id: 'a', name: '抽取余能', desc: '返还8远征体力' }, { id: 'b', name: '借道穿行', desc: '本轮时间 ×0.85，战力 ×0.90' }],
   },
   unstableCrystal: {
-    name: '不稳定晶簇', desc: '高能晶体正在崩解，短暂释放巨量物质。', image: 'events/unstable-crystal.webp',
+    name: '不稳定晶簇', desc: '高能晶体正在崩解，短暂释放巨量物质。', image: 'e/e3.webp',
     options: [{ id: 'a', name: '过载采集', desc: '本次远征货币 ×1.90，本轮战力 ×0.92' }, { id: 'b', name: '安全封存', desc: '本次远征货币 ×1.35' }],
   },
   driftingFleet: {
-    name: '漂流舰队', desc: '失去指挥的无人舰队仍在执行古老指令。', image: 'events/drifting-fleet.webp',
+    name: '漂流舰队', desc: '失去指挥的无人舰队仍在执行古老指令。', image: 'e/e4.webp',
     options: [{ id: 'a', name: '接入编队', desc: '本轮战力 ×1.10，远征货币 ×0.90' }, { id: 'b', name: '援助回收', desc: '本次cube奖励 ×1.15' }],
   },
   ancientBeacon: {
-    name: '古代信标', desc: '沉睡的信标能够校准返航坐标。', image: 'events/ancient-beacon.webp',
+    name: '古代信标', desc: '沉睡的信标能够校准返航坐标。', image: 'e/e5.webp',
     options: [{ id: 'a', name: '重新校准', desc: '本轮返还率 +5%，远征货币 ×0.90' }, { id: 'b', name: '拆解信标', desc: '本次远征货币 ×1.45' }],
   },
   dimensionalTide: {
-    name: '维度潮汐', desc: '物质潮汐正在横穿当前星域。', image: 'events/dimensional-tide.webp',
+    name: '维度潮汐', desc: '物质潮汐正在横穿当前星域。', image: 'e/e6.webp',
     options: [{ id: 'a', name: '顺潮采集', desc: '本轮远征货币 ×1.20，返还率 −5%' }, { id: 'b', name: '规避浪涌', desc: '返还3远征体力，本次远征货币 ×1.30' }],
   },
   brokenGate: {
-    name: '破损跃迁门', desc: '半毁的跃迁门仍残留可用的空间坐标。', image: 'events/broken-gate.webp',
+    name: '破损跃迁门', desc: '半毁的跃迁门仍残留可用的空间坐标。', image: 'e/e7.webp',
     options: [{ id: 'a', name: '强制重启', desc: '本轮时间 ×0.85，返还率 −3%' }, { id: 'b', name: '提取结构', desc: '本轮战力 ×1.08' }],
   },
   mirrorUniverse: {
-    name: '镜像宇宙', desc: '舰队短暂接触到一个资源分布相反的镜像世界。', image: 'events/mirror-universe.webp',
+    name: '镜像宇宙', desc: '舰队短暂接触到一个资源分布相反的镜像世界。', image: 'e/e8.webp',
     options: [{ id: 'a', name: '复制物质', desc: '本次远征货币 ×1.65，cube ×0.85' }, { id: 'b', name: '复制cube', desc: '本次cube ×1.15，远征货币 ×0.80' }],
   },
 }

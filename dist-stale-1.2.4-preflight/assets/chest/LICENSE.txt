@@ -1,0 +1,9 @@
+Treasure chest opening spritesheet
+
+Author: KillGorack
+Source: https://opengameart.org/content/treasure-chest-6
+License: Creative Commons CC0 1.0 Universal
+License URL: https://creativecommons.org/publicdomain/zero/1.0/
+
+The project uses a resized crop of the "Isometric perspective" animation row
+from multiformat_spritesheet.png.

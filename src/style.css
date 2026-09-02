@@ -1410,9 +1410,8 @@ body {
 .player-level-card {
   position: relative;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
+  flex-direction: column;
+  gap: 13px;
   overflow: hidden;
   padding: 16px;
   border: 1px solid rgba(255, 215, 0, 0.25);
@@ -1421,6 +1420,16 @@ body {
     radial-gradient(circle at 12% 0%, rgba(255, 215, 0, 0.13), transparent 48%),
     linear-gradient(135deg, rgba(52, 46, 29, 0.78), rgba(31, 30, 47, 0.96));
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+}
+
+.player-level-main {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 14px;
 }
 
 .player-level-card::after {
@@ -1518,8 +1527,14 @@ body {
 
 .level-up-area > span {
   grid-column: 1 / -1;
-  color: #817b62;
+  color: #918a70;
   font-size: 10px;
+}
+
+.level-up-area > b {
+  color: #fff0a0;
+  font-size: 13px;
+  line-height: 1;
 }
 
 .level-up-area > strong {
@@ -1536,31 +1551,31 @@ body {
   object-fit: contain;
 }
 
-.level-up-area button {
+.level-up-actions button {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  min-height: 34px;
-  padding: 7px 12px;
+  min-height: 42px;
+  padding: 9px 14px;
   border: 1px solid #f0cf38;
   border-radius: 10px;
   background: linear-gradient(135deg, #ffe66b, #e5b923);
   color: #302603;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   cursor: pointer;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 5px 13px rgba(229, 185, 35, 0.22);
   transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
 }
 
-.level-up-area button:not(:disabled):active {
+.level-up-actions button:not(:disabled):active {
   transform: translateY(1px) scale(0.98);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 2px 7px rgba(229, 185, 35, 0.2);
 }
 
-.level-up-area button:disabled {
+.level-up-actions button:disabled {
   border-color: rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.05);
   box-shadow: none;
@@ -1569,14 +1584,18 @@ body {
 }
 
 .level-up-actions {
-  display: flex;
-  grid-column: 2;
-  justify-content: flex-end;
-  gap: 6px;
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 100%;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  padding-top: 11px;
+  border-top: 1px solid rgba(255, 215, 0, 0.1);
 }
 
-.level-up-area .max-level-up-btn {
-  width: auto;
+.level-up-actions .max-level-up-btn {
+  width: 100%;
   margin-top: 0;
   padding: 7px 10px;
   border-color: rgba(178, 151, 255, 0.64);
@@ -1585,7 +1604,7 @@ body {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
-.level-up-area .max-level-up-btn:disabled {
+.level-up-actions .max-level-up-btn:disabled {
   border-color: rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.05);
   color: #5d5b68;
@@ -1841,23 +1860,36 @@ body {
 
 @media (max-width: 430px) {
   .player-level-card {
-    align-items: center;
-    flex-direction: row;
-    gap: 8px;
+    gap: 11px;
     padding: 12px;
   }
+  .player-level-main { gap: 8px; }
   .player-profile { gap: 7px; }
   .player-avatar { width: 42px; height: 42px; }
-  .player-level-copy > span { max-width: 88px; }
+  .player-level-copy > span { max-width: 128px; }
   .player-level-copy strong { font-size: 20px; }
   .level-up-area {
     grid-template-columns: auto 1fr;
     gap: 2px 5px;
   }
-  .level-up-actions { gap: 4px; }
-  .level-up-area button { min-height: 32px; padding: 6px 8px; font-size: 11px; }
-  .level-up-area .max-level-up-btn { margin-top: 0; padding: 6px 7px; }
+  .level-up-actions { gap: 7px; padding-top: 9px; }
+  .level-up-actions button { min-height: 40px; padding: 8px 10px; font-size: 12px; }
+  .level-up-actions .max-level-up-btn { margin-top: 0; padding: 8px 10px; }
 }
+
+.my-ranking-card {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  color: #bbf7d0;
+  background: linear-gradient(90deg, rgba(74, 222, 128, 0.14), rgba(74, 222, 128, 0.035));
+  border-bottom: 1px solid rgba(74, 222, 128, 0.2);
+  font-size: 12px;
+}
+
+.my-ranking-card strong { color: #f8fafc; font-size: 16px; }
 
 .max-level-modal {
   width: 100%;
@@ -1981,6 +2013,55 @@ body {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   text-align: center;
 }
+
+.user-info-panel {
+  margin-top: 20px;
+  padding: 13px;
+  border: 1px solid rgba(139, 92, 246, 0.22);
+  border-radius: 12px;
+  background: rgba(20, 16, 45, 0.5);
+  color: #aaa3b8;
+  font-size: 11px;
+}
+
+.user-info-panel h3 { display: flex; align-items: center; gap: 6px; margin: 0; color: #ddd6fe; font-size: 13px; }
+.user-info-panel > p { margin: 5px 0 10px; font-size: 10px; }
+.user-info-panel dl { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 7px 8px; margin: 0; }
+.user-info-panel dt { color: #7d7590; }
+.user-info-panel dd { margin: 0; color: #e5e7eb; overflow-wrap: anywhere; }
+.identity-retry-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 9px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 9px;
+  background: rgba(109, 40, 217, 0.18);
+  color: #ddd6fe;
+  font: inherit;
+}
+.identity-retry-btn:disabled { cursor: not-allowed; opacity: 0.5; }
+.diagnostic-log-panel { margin-top: 12px; }
+.diagnostic-log-panel summary { cursor: pointer; color: #c4b5fd; font-weight: 700; }
+.diagnostic-log-panel p { margin: 7px 0; color: #8c859b; line-height: 1.45; }
+.diagnostic-log-panel pre {
+  max-height: 320px;
+  margin: 0;
+  padding: 10px;
+  overflow: auto;
+  border: 1px solid rgba(248, 113, 113, 0.18);
+  border-radius: 8px;
+  background: rgba(7, 5, 16, 0.72);
+  color: #fecaca;
+  font: 10px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+  user-select: text;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.leaderboard-submit-error-detail { overflow-wrap: anywhere; color: #fca5a5; line-height: 1.55; }
 
 .reset-btn {
   background: none;
