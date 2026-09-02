@@ -1,8 +1,25 @@
-# Vue 3 + TypeScript + Vite
+# 盒子点点乐
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+基于 Vue 3、TypeScript、Vite 和小黑盒小程序 SDK 的点击养成小游戏。
 
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+## 本地开发
+
+要求 Node.js 20 或更高版本。
+
+```bash
+npm ci
+npm run dev
+```
+
+常用检查：
+
+```bash
+npm test
+npm run typecheck
+npm run build
+```
+
+`npm run deploy` 会调用小黑盒 SDK 的远端发布能力，请仅在已登录且明确准备发布时执行。
 
 ## 小黑盒排行榜配置
 
@@ -13,3 +30,7 @@ Learn more about the recommended Project Setup and IDE Support in the [Vue Docs 
 - 建议展示上限：100
 
 榜单分数为玩家等级，附加信息包含 `level`、`nickname` 和 `avatar`。
+
+## 许可证与素材
+
+项目代码使用 [MIT License](LICENSE)。第三方依赖和素材遵循各自许可证；素材来源及适用范围见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。小黑盒表情素材不包含在 MIT 授权范围内，公开分发或再利用前需自行确认平台授权。

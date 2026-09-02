@@ -1,7 +1,12 @@
 node_modules
 dist
+dist-stale-*/
+asset-archive/
 coverage
 *.local
+.env
+.env.*
+!.env.example
 .DS_Store
 tmp/
 .codex/
